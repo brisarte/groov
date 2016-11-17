@@ -9,7 +9,20 @@ float beatCount = 0;
 float time0;
 ofPoint baricenter(0,0), baricentro(0,0);
 
-bool DEBUGMODE = true;
+vector<Beat> b;	  //beats
+ofPoint lookAt;
+ofImage olho, girassol;
+ofxCvGrayscaleImage grayImage, blurImage; // grayscale depth image
+ofxKinect kinect;
+
+ofxCvColorImage colorImg;
+
+ofxCvContourFinder contourFinder;
+ofVideoPlayer video;
+
+ofShader shader, shaderInvert; //Shader
+
+bool DEBUGMODE = false;
 //--------------------------------------------------------------
 //----------------------  Particle  ----------------------------
 //--------------------------------------------------------------
@@ -47,16 +60,21 @@ void Beat::draw(){
 		//Compute color
 		ofColor color = ofColor::red;
 		float hue = ofMap( time, 0, lifeTime, 0, 20 );
-		color.setHue( hue );
+		color.setHue( time0 );
 		ofSetColor( color, opac*255 );
 
-		ofDrawCircle( vw/2, vh/2, size*vh/2 );  //Draw particle
+		desenhaPoligono(4,size*vh/1.9);
 
 	}
 }
 
 //--------------------------------------------------------------
 void ofApp::setup() {
+
+	// Aloca memoria com tamanho da viewport
+	vh = ofGetHeight();
+	vw = ofGetWidth();
+
 	ofSetLogLevel(OF_LOG_VERBOSE);
 	
 	// enable depth->video image calibration
@@ -75,6 +93,13 @@ void ofApp::setup() {
 	grayImage.allocate(kinect.width, kinect.height);
 	blurImage.allocate(kinect.width, kinect.height);
 	
+	//aloca "layers"
+
+	fboBack1.allocate(vw, vh);
+	fboBack2.allocate(vw, vh);
+	fboFront1.allocate(vw, vh);
+	fboFront2.allocate(vw, vh);
+
 	baricentro.set( blurImage.width/2, blurImage.height/2 );
 	
 	ofSetFrameRate(60);
@@ -94,10 +119,7 @@ void ofApp::setup() {
 	video.load("amazonia.mp4");
 	video.play();
 
-	fbo.allocate(kinect.width, kinect.height);
-	fboVideo.allocate( video.getWidth(), video.getHeight());
 
-	girassol.load("../data/girassol.png");
 
 	// 0 output channels, 
 	// 2 input channels
@@ -133,9 +155,11 @@ void ofApp::update() {
 
 	ofBackground(0, 0, 0);
 
-	// Aloca memoria com tamanho da viewport
-	vh = ofGetHeight();
-	vw = ofGetWidth();
+	if(DEBUGMODE) {
+		// Aloca memoria com tamanho da viewport
+		vh = ofGetHeight();
+		vw = ofGetWidth();
+	}
 
 	//Atualiza som recebido e calcula espectro
 	static int index=0;
@@ -254,6 +278,12 @@ void ofApp::update() {
 
 		// Encontra contornos
 		contourFinder.findContours(grayImage, 10, (kinect.width*kinect.height)/2, 20, false);
+
+
+	    // Corrige a proporção do ponto para a tela	
+		lookAt.x = ofMap(baricentro.x, 0, blurImage.width, 0, vw);
+		lookAt.y = ofMap(baricentro.y, 0, blurImage.height, 0, vh);
+
 	}
 
 
@@ -261,6 +291,73 @@ void ofApp::update() {
 	video.update();
 	
 
+	fboBack1.begin();
+
+	// Desenha poligono
+	ofSetColor(30,250,230);
+	desenhaPoligono( int(abs(sin(time0)*5)) + 3, sin(time0)*100 + 100 );
+
+	fboBack1.end();
+}
+
+//--------------------------------------------------------------
+void ofApp::draw() {
+	
+	ofSetColor(255, 255, 255);
+	
+
+	if(DEBUGMODE) {
+		// cameras e visualizações
+		if(bDrawPointCloud) {
+			easyCam.begin();
+			drawPointCloud();
+			easyCam.end();
+		} else {
+			// draw from the live kinect
+			
+			kinect.drawDepth(10, 10, 200, 150);
+			kinect.draw(210, 10, 200, 150);
+			
+			grayImage.draw(10, 160, 200, 150);
+			
+		}
+
+		// acelerometro e fps
+		ofSetColor(255, 255, 255);
+		stringstream reportStream;
+	        
+	    if(kinect.hasAccelControl()) {
+	        reportStream << "acc: " << ofToString(kinect.getMksAccel().x, 2) << " / "
+	        << ofToString(kinect.getMksAccel().y, 2) << " / "
+	        << ofToString(kinect.getMksAccel().z, 2) << endl;
+	    }
+		reportStream << "fps: " << ofGetFrameRate() << endl; 
+		ofDrawBitmapString(reportStream.str(), 20, 652);
+	}
+
+
+	if(DEBUGMODE) {
+
+		// Acompanha posição da pessoa
+    	// blurImage.draw(0,0, vw,vh);
+		ofSetColor(255, 255, 255);
+		contourFinder.draw(0,0, vw,vh);
+		ofDrawCircle(lookAt, 10);
+
+		/* draw the FFT */
+		for (int i = 1; i < (int)(BUFFER_SIZE/4); i++){
+			ofSetColor(250,250,250);
+			ofLine(200+(i*8),700,200+(i*8),700-spectrum[i]*10.0f);
+		}
+	}
+
+
+	fboBack1.draw(0,0);
+	fboBack2.draw(0,0);
+	fboFront1.draw(0,0);
+	fboFront1.draw(0,0);
+
+    
 }
 
 void ofApp::getBlurImage(ofxCvGrayscaleImage &imgBlur, int indiceBlur) {
@@ -287,105 +384,16 @@ void ofApp::getNearMirror(ofxCvGrayscaleImage &imgGray, int contrasteDistancia) 
 	imgGray.flagImageChanged();
 }
 
-//--------------------------------------------------------------
-void ofApp::draw() {
-	
-	ofSetColor(255, 255, 255);
-	
-
-	if(DEBUGMODE) {
-		if(bDrawPointCloud) {
-			easyCam.begin();
-			drawPointCloud();
-			easyCam.end();
-		} else {
-			// draw from the live kinect
-			
-			kinect.drawDepth(10, 10, 200, 150);
-			kinect.draw(210, 10, 200, 150);
-			
-			grayImage.draw(10, 160, 200, 150);
-			
-		}
-	}
-    
-
-	// acelerometro e fps
-	if(DEBUGMODE) {
-
-		ofSetColor(255, 255, 255);
-		stringstream reportStream;
-	        
-	    if(kinect.hasAccelControl()) {
-	        reportStream << "acc: " << ofToString(kinect.getMksAccel().x, 2) << " / "
-	        << ofToString(kinect.getMksAccel().y, 2) << " / "
-	        << ofToString(kinect.getMksAccel().z, 2) << endl;
-	    }
-		reportStream << "fps: " << ofGetFrameRate() << endl; 
-		ofDrawBitmapString(reportStream.str(), 20, 652);
-	}
-
-	// depthcam+rgb pelo shader
-	if(false) {
-		fbo.begin();
-		
-		ofSetColor( 255, 255, 255 );
-		grayImage.draw(0, 0, kinect.width, kinect.height);
-
-		fbo.end();
-
-
-		//Enable shader
-		shader.begin();
-
-		shader.setUniformTexture( "texture1", fbo.getTextureReference(), 1 ); //"1" means that it is texture 1
-
-		ofSetColor( 255, 255, 255 );
-		kinect.draw( 210, 160, 200, 150);
-
-		shader.end();
-	}
-
-	// Video invertido pela depthcam
-	if(false) {
-		// Desenha depthcam no fbo pra usar de textura
-		fboVideo.begin();
-		
-		ofSetColor( 255, 255, 255 );
-		grayImage.draw(0, 0, video.getWidth(), video.getHeight());
-
-		fboVideo.end();
-
-		// desenha o video invertido
-		shaderInvert.begin();
-
-		video.draw( 0, 0, 1024, 768);
-
-		shaderInvert.end();
-
-		//desenha video filtrado pela depthcam
-		shader.begin();
-				
-		shader.setUniformTexture( "texture1", fboVideo.getTextureReference(), 1 ); //"1" means that it is texture 1
-
-		//Draw video through shader
-		ofSetColor( 255, 255, 255 );
-		video.draw( 0, 0, 1024, 768);
-		
-		shader.end();
-	}
-
-    // Desenha beats
+// Desenha poligono
+void desenhaBeats() {
+	// Desenha beats
 	for (int i=0; i<b.size(); i++) {
 		b[i].draw();
 	}
+}
 
-    // Corrige a proporção do ponto para a tela	
-	ofPoint lookAt;
-	lookAt.x = ofMap(baricentro.x, 0, blurImage.width, 0, vw);
-	lookAt.y = ofMap(baricentro.y, 0, blurImage.height, 0, vh);
-   
-	// Desenha objeto que "olha" pra pessoa
+// Desenha objeto que "olha" pra pessoa
+void desenhaLookAtMe() {
 	glPushMatrix();
 
 	glTranslatef(vw/2,vh/2, 0);
@@ -401,22 +409,80 @@ void ofApp::draw() {
 
 	glPopMatrix();
 
+}
+// Desenha depthcam+rgb pelo shader
+void desenhaDepthAlpha() {
+	ofFbo fbo;
+	fbo.allocate(kinect.width, kinect.height);
+	fbo.begin();
+	
+	ofSetColor( 255, 255, 255 );
+	grayImage.draw(0, 0, kinect.width, kinect.height);
 
-	if(DEBUGMODE) {
+	fbo.end();
 
-		// Acompanha posição da pessoa
-    	// blurImage.draw(0,0, vw,vh);
-		ofSetColor(255, 255, 255);
-		contourFinder.draw(0,0, vw,vh);
-		ofDrawCircle(lookAt, 10);
 
-		/* draw the FFT */
-		for (int i = 1; i < (int)(BUFFER_SIZE/4); i++){
-			ofSetColor(250,250,250);
-			ofLine(200+(i*8),700,200+(i*8),700-spectrum[i]*10.0f);
-		}
+	//Enable shader
+	shader.begin();
+
+	shader.setUniformTexture( "texture1", fbo.getTextureReference(), 1 ); //"1" means that it is texture 1
+
+	ofSetColor( 255, 255, 255 );
+	kinect.draw( 210, 160, 200, 150);
+
+	shader.end();
+}
+
+// Desenha Video invertido pela depthcam
+void desenhaCamVideo() {
+	ofFbo fboVideo;
+
+	fboVideo.allocate( video.getWidth(), video.getHeight());
+	// Desenha depthcam no fbo pra usar de textura
+	fboVideo.begin();
+	
+	ofSetColor( 255, 255, 255 );
+	grayImage.draw(0, 0, video.getWidth(), video.getHeight());
+
+	fboVideo.end();
+
+	// desenha o video invertido
+	shaderInvert.begin();
+
+	video.draw( 0, 0, 1024, 768);
+
+	shaderInvert.end();
+
+	//desenha video filtrado pela depthcam
+	shader.begin();
+			
+	shader.setUniformTexture( "texture1", fboVideo.getTextureReference(), 1 ); //"1" means that it is texture 1
+
+	//desenha video pelo shader
+	ofSetColor( 255, 255, 255 );
+	video.draw( 0, 0, 1024, 768);
+	
+	shader.end();
+}
+
+// Desenha poligono
+void desenhaPoligono(int vertices, int radius) {
+	if(vertices < 3)
+		vertices = 3;
+	ofFill();
+	glPushMatrix();
+
+	glTranslatef(vw/2,vh/2, 0);
+
+	ofBeginShape();
+	for(int i = 0; i < vertices; i++) {
+		float theta = (TWO_PI/vertices) * i;
+		ofVertex( sin(theta)*radius , cos(theta)*radius ,0);
 	}
-    
+	ofEndShape();
+
+	glRotatef( sin(time0) , 0, 1, 0); 
+	glPopMatrix();
 }
 
 void ofApp::drawPointCloud() {
@@ -470,6 +536,10 @@ void ofApp::keyPressed (int key) {
 			bDrawPointCloud = !bDrawPointCloud;
 			break;
 			
+		case 'd':
+			DEBUGMODE = !DEBUGMODE;
+			break;
+			
 		case '>':
 		case '.':
 			break;
@@ -521,7 +591,7 @@ void ofApp::keyPressed (int key) {
 		case '0':
 			kinect.setLed(ofxKinect::LED_OFF);
 			break;
-			
+
 		case OF_KEY_UP:
 			angle++;
 			if(angle>30) angle=30;

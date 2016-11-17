@@ -23,6 +23,13 @@ public:
 	float size;
 };
 
+void desenhaPoligono(int vertices, int radius);
+void desenhaBeats();
+void desenhaDepthAlpha();
+void desenhaLookAtMe();
+void desenhaCamVideo();
+void desenhaBeats();
+
 class ofApp : public ofBaseApp {
 public:
 	
@@ -46,15 +53,6 @@ public:
 	
 	void audioReceived 	(float * input, int bufferSize, int nChannels); 
 
-	ofxKinect kinect;
-	
-	ofxCvColorImage colorImg;
-
-	ofImage olho, girassol;
-	
-	ofxCvGrayscaleImage grayImage, blurImage; // grayscale depth image
-
-	ofxCvContourFinder contourFinder;
 	
 	bool bDrawPointCloud;
 	
@@ -63,15 +61,9 @@ public:
 	// used for viewing the point cloud
 	ofEasyCam easyCam;
 
-	ofVideoPlayer video;
-
-
-	vector<Beat> b;	  //beats
 
 private:
-	ofFbo fbo, fbo2, fboVideo;	//buffer para telas
-	
-	ofShader shader, shaderInvert; //Shader
+	ofFbo  fboBack1, fboBack2, fboFront1, fboFront2;	//buffer para telas
 	
 	// Audio
 	float * left;
