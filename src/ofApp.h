@@ -8,6 +8,21 @@
 #define BUFFER_SIZE 256
 #define NUM_WINDOWS 80
 
+//Beat class
+class Beat {
+public:
+	Beat();                //Class constructor
+	void setup();              //Start beat
+	void update( float dt );   //Recalculate physics
+	void draw();               //Draw beat
+
+	float time;                //Time of living
+	float lifeTime;            //Allowed lifetime
+	bool live;                 //Is beat live
+	float opac;
+	float size;
+};
+
 class ofApp : public ofBaseApp {
 public:
 	
@@ -18,6 +33,7 @@ public:
 	
 	void drawPointCloud();
 
+	void getBlurImage(ofxCvGrayscaleImage &imgBlur, int indiceBlur);
 	void getNearMirror(ofxCvGrayscaleImage &imgGray, int contrasteDistancia);
 	
 	void keyPressed(int key);
@@ -33,8 +49,12 @@ public:
 	ofxKinect kinect;
 	
 	ofxCvColorImage colorImg;
+
+	ofImage olho, girassol;
 	
-	ofxCvGrayscaleImage grayImage; // grayscale depth image
+	ofxCvGrayscaleImage grayImage, blurImage; // grayscale depth image
+
+	ofxCvContourFinder contourFinder;
 	
 	bool bDrawPointCloud;
 	
@@ -45,10 +65,13 @@ public:
 
 	ofVideoPlayer video;
 
+
+	vector<Beat> b;	  //beats
+
 private:
 	ofFbo fbo, fbo2, fboVideo;	//buffer para telas
 	
-	ofShader shader; //Shader
+	ofShader shader, shaderInvert; //Shader
 	
 	// Audio
 	float * left;

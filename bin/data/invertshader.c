@@ -30,6 +30,9 @@ void main(){
   vec4 color;
 
   color = color0;  
-  color.a = corDepth.b;  
+  color.r = 1 - color.r;
+  color.g = 1 - color.g;
+  color.b = 1 - color.b;
+
   gl_FragColor = color;
 }

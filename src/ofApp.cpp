@@ -2,6 +2,58 @@
 
 const int N = 256;		//Number of bands in spectrum
 float spectrum[ N ];	//Smoothed spectrum values
+float beat;
+float beatMin = 8;
+int vw,vh;
+float beatCount = 0;
+float time0;
+ofPoint baricenter(0,0), baricentro(0,0);
+
+bool DEBUGMODE = true;
+//--------------------------------------------------------------
+//----------------------  Particle  ----------------------------
+//--------------------------------------------------------------
+Beat::Beat() {
+	live = false;
+}
+
+//--------------------------------------------------------------
+void Beat::setup() {
+	time = 0;
+	lifeTime = 1.0;
+	live = true;
+	size = 0;
+	opac = 1;
+}
+
+//--------------------------------------------------------------
+void Beat::update( float dt ){
+	if ( live ) {
+		// Atualiza tamanho e opac
+		size = ofMap(time, 0, lifeTime, 0, 1);
+		opac = ofMap(time, 0, lifeTime, 1, 0);
+
+		//Update time and check if particle should die
+		time += dt;
+		if ( time >= lifeTime ) {
+			live = false;   //Particle is now considered as died
+		}
+	}
+}
+
+//--------------------------------------------------------------
+void Beat::draw(){
+	if ( live ) {
+		//Compute color
+		ofColor color = ofColor::red;
+		float hue = ofMap( time, 0, lifeTime, 0, 20 );
+		color.setHue( hue );
+		ofSetColor( color, opac*255 );
+
+		ofDrawCircle( vw/2, vh/2, size*vh/2 );  //Draw particle
+
+	}
+}
 
 //--------------------------------------------------------------
 void ofApp::setup() {
@@ -21,7 +73,9 @@ void ofApp::setup() {
 	
 	colorImg.allocate(kinect.width, kinect.height);
 	grayImage.allocate(kinect.width, kinect.height);
+	blurImage.allocate(kinect.width, kinect.height);
 	
+	baricentro.set( blurImage.width/2, blurImage.height/2 );
 	
 	ofSetFrameRate(60);
 	
@@ -34,6 +88,7 @@ void ofApp::setup() {
 
 	//Load shader
 	shader.load( "vertexdummy.c", "kinectshader.c" );
+	shaderInvert.load( "vertexdummy.c", "invertshader.c" );
 
 	//Carrega o vídeo
 	video.load("amazonia.mp4");
@@ -41,6 +96,8 @@ void ofApp::setup() {
 
 	fbo.allocate(kinect.width, kinect.height);
 	fboVideo.allocate( video.getWidth(), video.getHeight());
+
+	girassol.load("../data/girassol.png");
 
 	// 0 output channels, 
 	// 2 input channels
@@ -68,7 +125,17 @@ void ofApp::setup() {
 
 //--------------------------------------------------------------
 void ofApp::update() {
+
+	//Compute dt
+	float time = ofGetElapsedTimef();
+	float dt = ofClamp( time - time0, 0, 0.1 );
+	time0 = time;
+
 	ofBackground(0, 0, 0);
+
+	// Aloca memoria com tamanho da viewport
+	vh = ofGetHeight();
+	vw = ofGetWidth();
 
 	//Atualiza som recebido e calcula espectro
 	static int index=0;
@@ -93,7 +160,46 @@ void ofApp::update() {
 		spectrum[i] *= 0.95; //0.97;	//Slow decreasing
 		spectrum[i] = max( spectrum[i], magniView[i] );
 	}
-	
+
+	// Calcula beat
+	beat = 0;
+	int beatSize = 2;
+	for ( int i=0; i<beatSize; i++ ) {
+		beat += magniView[i];
+	}
+	beat /= beatSize;
+
+	//Delete inactive beats
+	int i=0;
+	while (i < b.size()) {
+		if ( !b[i].live ) {
+			b.erase( b.begin() + i );
+		}
+		else {
+			i++;
+		}
+	}
+
+	//Born new beats
+	beatCount += dt;      //Soma tempo passado pra limitar criação de beats
+	float beatPerSec = 2.;
+	if ( beatCount >= 1/beatPerSec  && beat > beatMin ) {          //It's time to born beats
+		cout << "\nBeat:" << beat;
+		int beatN = int( beatCount*beatPerSec );//How many born
+		beatCount -= beatN/beatPerSec;          //Correct beatCount value
+		for (int i=0; i<beatN; i++) {
+			Beat newB;
+			newB.setup();            //Start a new beat
+			b.push_back( newB );     //Add this beat to array
+		}
+	}
+
+	//Update beats
+	for (int i=0; i<b.size(); i++) {
+		b[i].update( dt );
+	}
+
+
 	kinect.update();
 	
 	// Só executa se aconteceu algo no kinect
@@ -101,8 +207,55 @@ void ofApp::update() {
 		
 		// load grayscale depth image from the kinect source
 		grayImage.setFromPixels(kinect.getDepthPixels());
-		getNearMirror(grayImage, 158);
+		getNearMirror(grayImage, 188);
+
+		// load grayscale depth image from the kinect source
+		blurImage = grayImage;
+		getBlurImage(blurImage, 121);
+
+		// Calcula "baricentro"
+
+		unsigned char * pix = blurImage.getPixels();
+		int blurWidth = blurImage.width;
+		ofPoint centro( blurWidth/2, blurImage.height/2 );
+		int whiteTotal = 0;
+
+		ofPoint baricentro0 = baricentro;
+
+		baricentro.set(0, 0);
+		for(int j = 0; j < 10; j++) {
+			ofVec2f vecDirecao(15 + j*30,0);
+			for(int i = 0; i < 8; i++) {
+				ofPoint pontoRef = centro+vecDirecao;
+				// Caso o ponto esteja dentro da imagem
+				if (pontoRef.x >= 0 && pontoRef.y >= 0 && 
+					pontoRef.x < blurWidth && pontoRef.y < blurImage.height) 
+				{
+
+					int white = pix[int(pontoRef.y)*blurWidth + int(pontoRef.x)];
+					if (DEBUGMODE) {
+						pix[int(pontoRef.y)*blurWidth + int(pontoRef.x)] = 255;
+					}
+					whiteTotal += white;
+					baricentro += pontoRef*white;
+				}
+
+				vecDirecao.rotate(45);
+			}
+		}
+
+		if(whiteTotal>0) {
+			baricentro /= whiteTotal;
+		} else {
+			baricentro.set( blurImage.width/2, blurImage.height/2 );
+		}
+
+		baricentro = baricentro*0.04 + baricentro0*0.96;
+
+		// Encontra contornos
+		contourFinder.findContours(grayImage, 10, (kinect.width*kinect.height)/2, 20, false);
 	}
+
 
 	//Atualiza frame do video
 	video.update();
@@ -110,9 +263,22 @@ void ofApp::update() {
 
 }
 
+void ofApp::getBlurImage(ofxCvGrayscaleImage &imgBlur, int indiceBlur) {
+	imgBlur.blur(11);
+	imgBlur.erode();
+	imgBlur.dilate();
+	imgBlur.blur(101);
+	imgBlur.erode();
+	imgBlur.dilate();
+	imgBlur.blur(101);
+
+	imgBlur.flagImageChanged();
+}	
+
+
 void ofApp::getNearMirror(ofxCvGrayscaleImage &imgGray, int contrasteDistancia) {
 
-	//imgGray.mirror(false,true);
+	imgGray.mirror(false,true);
 	ofPixels & pixNoise = imgGray.getPixels();
 	int numPixelsNoise = pixNoise.size();
 	for (int i = 0; i < numPixelsNoise; i++) {
@@ -126,76 +292,131 @@ void ofApp::draw() {
 	
 	ofSetColor(255, 255, 255);
 	
-	if(bDrawPointCloud) {
-		easyCam.begin();
-		drawPointCloud();
-		easyCam.end();
-	} else {
-		// draw from the live kinect
-		kinect.drawDepth(10, 10, 200, 150);
-		kinect.draw(210, 10, 200, 150);
-		
-		grayImage.draw(10, 160, 200, 150);
-		
-	}
-	
-	// draw instructions
-	ofSetColor(255, 255, 255);
-	stringstream reportStream;
-        
-    if(kinect.hasAccelControl()) {
-        reportStream << "acc: " << ofToString(kinect.getMksAccel().x, 2) << " / "
-        << ofToString(kinect.getMksAccel().y, 2) << " / "
-        << ofToString(kinect.getMksAccel().z, 2) << endl;
-    }
-    
-	reportStream << "fps: " << ofGetFrameRate() << endl;
-    
-	ofDrawBitmapString(reportStream.str(), 20, 652);
 
-
-	fbo.begin();
-	
-	ofSetColor( 255, 255, 255 );
-	grayImage.draw(0, 0, kinect.width, kinect.height);
-
-	fbo.end();
-
-
-	//Enable shader
-	shader.begin();
-
-	shader.setUniformTexture( "texture1", fbo.getTextureReference(), 1 ); //"1" means that it is texture 1
-
-	ofSetColor( 255, 255, 255 );
-	kinect.draw( 210, 160, 200, 150);
-
-	shader.end();
-
-
-	fboVideo.begin();
-	
-	ofSetColor( 255, 255, 255 );
-	grayImage.draw(0, 0, video.getWidth(), video.getHeight());
-
-	fboVideo.end();
-
-	//Enable shader
-	shader.begin();
+	if(DEBUGMODE) {
+		if(bDrawPointCloud) {
+			easyCam.begin();
+			drawPointCloud();
+			easyCam.end();
+		} else {
+			// draw from the live kinect
 			
-	shader.setUniformTexture( "texture1", fboVideo.getTextureReference(), 1 ); //"1" means that it is texture 1
-
-	//Draw video through shader
-	ofSetColor( 255, 255, 255 );
-	video.draw( 0, 0, 1024, 768);
-
-	shader.end();
-    
-    /* draw the FFT */
-	for (int i = 1; i < (int)(BUFFER_SIZE/2); i++){
-		ofSetColor(250,250,250);
-		ofLine(200+(i*4),700,200+(i*4),700-spectrum[i]*10.0f);
+			kinect.drawDepth(10, 10, 200, 150);
+			kinect.draw(210, 10, 200, 150);
+			
+			grayImage.draw(10, 160, 200, 150);
+			
+		}
 	}
+    
+
+	// acelerometro e fps
+	if(DEBUGMODE) {
+
+		ofSetColor(255, 255, 255);
+		stringstream reportStream;
+	        
+	    if(kinect.hasAccelControl()) {
+	        reportStream << "acc: " << ofToString(kinect.getMksAccel().x, 2) << " / "
+	        << ofToString(kinect.getMksAccel().y, 2) << " / "
+	        << ofToString(kinect.getMksAccel().z, 2) << endl;
+	    }
+		reportStream << "fps: " << ofGetFrameRate() << endl; 
+		ofDrawBitmapString(reportStream.str(), 20, 652);
+	}
+
+	// depthcam+rgb pelo shader
+	if(false) {
+		fbo.begin();
+		
+		ofSetColor( 255, 255, 255 );
+		grayImage.draw(0, 0, kinect.width, kinect.height);
+
+		fbo.end();
+
+
+		//Enable shader
+		shader.begin();
+
+		shader.setUniformTexture( "texture1", fbo.getTextureReference(), 1 ); //"1" means that it is texture 1
+
+		ofSetColor( 255, 255, 255 );
+		kinect.draw( 210, 160, 200, 150);
+
+		shader.end();
+	}
+
+	// Video invertido pela depthcam
+	if(false) {
+		// Desenha depthcam no fbo pra usar de textura
+		fboVideo.begin();
+		
+		ofSetColor( 255, 255, 255 );
+		grayImage.draw(0, 0, video.getWidth(), video.getHeight());
+
+		fboVideo.end();
+
+		// desenha o video invertido
+		shaderInvert.begin();
+
+		video.draw( 0, 0, 1024, 768);
+
+		shaderInvert.end();
+
+		//desenha video filtrado pela depthcam
+		shader.begin();
+				
+		shader.setUniformTexture( "texture1", fboVideo.getTextureReference(), 1 ); //"1" means that it is texture 1
+
+		//Draw video through shader
+		ofSetColor( 255, 255, 255 );
+		video.draw( 0, 0, 1024, 768);
+		
+		shader.end();
+	}
+
+    // Desenha beats
+	for (int i=0; i<b.size(); i++) {
+		b[i].draw();
+	}
+
+    // Corrige a proporção do ponto para a tela	
+	ofPoint lookAt;
+	lookAt.x = ofMap(baricentro.x, 0, blurImage.width, 0, vw);
+	lookAt.y = ofMap(baricentro.y, 0, blurImage.height, 0, vh);
+   
+	// Desenha objeto que "olha" pra pessoa
+	glPushMatrix();
+
+	glTranslatef(vw/2,vh/2, 0);
+	float anguloX = ofMap(lookAt.x,0,vw,-50,50);
+	glRotatef(anguloX, 0, 1, 0); 
+
+	float anguloY = ofMap(lookAt.y,0,vh,-50,50);
+	glRotatef(anguloY, -1, 0, 0); 
+
+	ofSetColor(255, 255, 255);
+	girassol.setAnchorPercent(0.5, 0.5);
+	girassol.draw(0,0);
+
+	glPopMatrix();
+
+
+	if(DEBUGMODE) {
+
+		// Acompanha posição da pessoa
+    	// blurImage.draw(0,0, vw,vh);
+		ofSetColor(255, 255, 255);
+		contourFinder.draw(0,0, vw,vh);
+		ofDrawCircle(lookAt, 10);
+
+		/* draw the FFT */
+		for (int i = 1; i < (int)(BUFFER_SIZE/4); i++){
+			ofSetColor(250,250,250);
+			ofLine(200+(i*8),700,200+(i*8),700-spectrum[i]*10.0f);
+		}
+	}
+    
 }
 
 void ofApp::drawPointCloud() {
