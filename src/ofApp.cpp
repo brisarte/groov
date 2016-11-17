@@ -22,6 +22,8 @@ ofVideoPlayer video;
 
 ofShader shader, shaderInvert; //Shader
 
+ofFbo fbo, fboVideo; //Buffers temporarios
+
 bool DEBUGMODE = false;
 //--------------------------------------------------------------
 //----------------------  Particle  ----------------------------
@@ -72,8 +74,8 @@ void Beat::draw(){
 void ofApp::setup() {
 
 	// Aloca memoria com tamanho da viewport
-	vh = ofGetHeight();
-	vw = ofGetWidth();
+	vh = 768;
+	vw = 1024;
 
 	ofSetLogLevel(OF_LOG_VERBOSE);
 	
@@ -120,6 +122,8 @@ void ofApp::setup() {
 	video.play();
 
 
+	fboVideo.allocate( video.getWidth(), video.getHeight());
+	fbo.allocate(kinect.width, kinect.height);
 
 	// 0 output channels, 
 	// 2 input channels
@@ -291,20 +295,45 @@ void ofApp::update() {
 	video.update();
 	
 
+
 	fboBack1.begin();
 
+	ofBackground(0, 0, 0, 0);
 	// Desenha poligono
 	ofSetColor(30,250,230);
-	desenhaPoligono( int(abs(sin(time0)*5)) + 3, sin(time0)*100 + 100 );
+	desenhaPoligono( int(abs(sin(time0)*5)) + 3, sin(time0)*70 + 150 );
 
 	fboBack1.end();
+
+	fboBack2.begin();
+		ofBackground(0, 0, 0, 0);
+		desenhaBeats();
+	fboBack2.end();
+
+	
+
+	fboFront1.begin();
+		ofBackground(0, 0, 0, 0);
+	fboFront1.end();
+
+	fboFront2.begin();
+		ofBackground(0, 0, 0, 0);
+	fboFront2.end();
 }
 
 //--------------------------------------------------------------
 void ofApp::draw() {
 	
+	ofBackground(0, 0, 0);
 	ofSetColor(255, 255, 255);
 	
+
+
+	fboBack1.draw(0,0);
+	fboBack2.draw(0,0);
+	fboFront1.draw(0,0);
+	fboFront2.draw(0,0);
+    
 
 	if(DEBUGMODE) {
 		// cameras e visualizações
@@ -333,10 +362,6 @@ void ofApp::draw() {
 	    }
 		reportStream << "fps: " << ofGetFrameRate() << endl; 
 		ofDrawBitmapString(reportStream.str(), 20, 652);
-	}
-
-
-	if(DEBUGMODE) {
 
 		// Acompanha posição da pessoa
     	// blurImage.draw(0,0, vw,vh);
@@ -352,12 +377,8 @@ void ofApp::draw() {
 	}
 
 
-	fboBack1.draw(0,0);
-	fboBack2.draw(0,0);
-	fboFront1.draw(0,0);
-	fboFront1.draw(0,0);
 
-    
+
 }
 
 void ofApp::getBlurImage(ofxCvGrayscaleImage &imgBlur, int indiceBlur) {
@@ -410,10 +431,9 @@ void desenhaLookAtMe() {
 	glPopMatrix();
 
 }
+/*
 // Desenha depthcam+rgb pelo shader
 void desenhaDepthAlpha() {
-	ofFbo fbo;
-	fbo.allocate(kinect.width, kinect.height);
 	fbo.begin();
 	
 	ofSetColor( 255, 255, 255 );
@@ -435,9 +455,7 @@ void desenhaDepthAlpha() {
 
 // Desenha Video invertido pela depthcam
 void desenhaCamVideo() {
-	ofFbo fboVideo;
 
-	fboVideo.allocate( video.getWidth(), video.getHeight());
 	// Desenha depthcam no fbo pra usar de textura
 	fboVideo.begin();
 	
@@ -464,7 +482,7 @@ void desenhaCamVideo() {
 	
 	shader.end();
 }
-
+*/
 // Desenha poligono
 void desenhaPoligono(int vertices, int radius) {
 	if(vertices < 3)

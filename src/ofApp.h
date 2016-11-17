@@ -63,8 +63,8 @@ public:
 
 
 private:
-	ofFbo  fboBack1, fboBack2, fboFront1, fboFront2;	//buffer para telas
 	
+ofFbo  fboBack1, fboBack2, fboFront1, fboFront2;	//buffer para telas
 	// Audio
 	float * left;
 	float * right;
