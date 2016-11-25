@@ -1025,22 +1025,24 @@ void PolyMask::mousePressed(int x, int y) {
 
 void PolyMask::mouseDragged(int x, int y) {
 	ofPoint p(x,y);
-	if(p1a) {
-		ponto1 += p - pontoDragged;
-	}
-	if(p2a) {
-		ponto2 += p - pontoDragged;
-	}
-	if(p3a) {
-		ponto3 += p - pontoDragged;
-	}
+	pontoDragged = p - pontoClicked;
 }
 
 void PolyMask::mouseReleased(int x, int y) {
+	ofPoint p(x,y);
+	if(p1a) {
+		ponto1 += p - pontoClicked;
+	}
+	if(p2a) {
+		ponto2 += p - pontoClicked;
+	}
+	if(p3a) {
+		ponto3 += p - pontoClicked;
+	}
+	pontoDragged.set(0,0);
 	p1a = false;
 	p2a = false;
 	p3a = false;
-	pontoDragged.set(0,0);
 }
 
 float PolyMask::sign (ofPoint p1, ofPoint p2, ofPoint p3)
