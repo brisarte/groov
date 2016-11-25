@@ -37,7 +37,7 @@ public:
 	float sign (ofPoint p1, ofPoint p2, ofPoint p3);
 	bool PointInTriangle (ofPoint pt);
 
-	ofPoint ponto1, ponto2, ponto3, pontoDragged;
+	ofPoint ponto1, ponto2, ponto3, pontoDragged, pontoClicked;
 	bool p1a, p2a, p3a;
 };
 

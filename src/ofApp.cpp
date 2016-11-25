@@ -719,17 +719,17 @@ void PolyMask::draw() {
 }
 
 void PolyMask::mousePressed(int x, int y) {
-	if(pontoDragged.x == 0 && pontoDragged.y == 0) {
-		pontoDragged.set(x,y);
+	if(pontoClicked.x == 0 && pontoClicked.y == 0) {
+		pontoClicked.set(x,y);
 	}
 	
-	if(ponto1.distance(pontoDragged) < 10) {
+	if(ponto1.distance(pontoClicked) < 10) {
 		p1a = true;
-	} else if(ponto2.distance(pontoDragged) < 10) {
+	} else if(ponto2.distance(pontoClicked) < 10) {
 		p2a = true;
-	} else if(ponto3.distance(pontoDragged) < 10) {
+	} else if(ponto3.distance(pontoClicked) < 10) {
 		p3a = true;
-	} else if( PointInTriangle(pontoDragged) ) {
+	} else if( PointInTriangle(pontoClicked) ) {
 		p1a = true;
 		p2a = true;
 		p3a = true;
