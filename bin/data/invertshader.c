@@ -20,12 +20,11 @@ uniform float specArray[N];
 void main(){
   vec2 pos = gl_TexCoord[0].st;     
   
-  // Imagem da camera
+  // Imagem do video
   vec4 color0 = texture2DRect(texture0, pos);
   // Imagem do sensor de profundidade
   vec4 corDepth =  texture2DRect(texture1, pos);
 
-  // Blur na cor
 
   vec4 color;
 
@@ -33,6 +32,9 @@ void main(){
   color.r = 1 - color.r;
   color.g = 1 - color.g;
   color.b = 1 - color.b;
+
+  if(corDepth.b > 0)
+    color.a = 1 - corDepth.b;
 
   gl_FragColor = color;
 }
