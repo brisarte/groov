@@ -10,6 +10,8 @@ float time0;
 ofPoint baricenter(0,0), baricentro(0,0);
 
 vector<Beat> b;	  //beats
+
+vector<PolyMask> masks;	//Array of sliders
 ofPoint lookAt;
 ofImage olho, orbita, girassol;
 ofxCvGrayscaleImage grayImage, blurImage; // grayscale depth image
@@ -204,7 +206,7 @@ void ofApp::update() {
 	else
 		index = 0;
 	
-	myfft.powerSpectrum(0,(int)BUFFER_SIZE/2, left,BUFFER_SIZE,&magnitude[0],&phase[0],&power[0],&avg_power);
+	//myfft.powerSpectrum(0,(int)BUFFER_SIZE/2, left,BUFFER_SIZE,&magnitude[0],&phase[0],&power[0],&avg_power);
 	
 	for(int j=1; j < BUFFER_SIZE/2; j++) {
 		magniView[j] = ofLerp(magniView[j], magnitude[j], 0.08);		
@@ -580,6 +582,11 @@ void ofApp::draw() {
 		}
 	}
 
+	for (int i = 0; i<masks.size(); i++) {
+		PolyMask &m = masks[i];
+		m.draw();
+	}
+
 }
 
 void ofApp::getBlurImage(ofxCvGrayscaleImage &imgBlur, int indiceBlur) {
@@ -858,6 +865,10 @@ void ofApp::keyPressed (int key) {
 			
 		case 'w':
 			break;
+
+		case 'm':
+			addMask();
+			break;
 			
 		case 'o':
 			kinect.setCameraTiltAngle(angle); // go back to prev tilt
@@ -911,18 +922,29 @@ void ofApp::keyPressed (int key) {
 void ofApp::mouseDragged(int x, int y, int button)
 {
 	
+	for (int i = 0; i<masks.size(); i++) {
+		PolyMask &m = masks[i];
+		m.mouseDragged(x,y);
+	}
 }
 
 //--------------------------------------------------------------
 void ofApp::mousePressed(int x, int y, int button)
 {
 
+	for (int i = 0; i<masks.size(); i++) {
+		PolyMask &m = masks[i];
+		m.mousePressed(x,y);
+	}
 }
 
 //--------------------------------------------------------------
 void ofApp::mouseReleased(int x, int y, int button)
 {
-
+	for (int i = 0; i<masks.size(); i++) {
+		PolyMask &m = masks[i];
+		m.mouseReleased(x,y);
+	}
 }
 
 //--------------------------------------------------------------
@@ -939,4 +961,100 @@ void ofApp::mouseExited(int x, int y){
 void ofApp::windowResized(int w, int h)
 {
 
+}
+
+
+void addMask() {
+	PolyMask mask;
+	mask.setup();
+	masks.push_back(mask);
+}
+//--------------------------------------------------------------
+//----------------------  GUI ----------------------------------
+//--------------------------------------------------------------
+void PolyMask::setup() {
+	ponto1.set(vw/2,vh/3);
+	ponto2.set(vw/4,vh*0.8);
+	ponto3.set(vw*0.75,vh*0.8);
+	pontoDragged.set(0,0);
+	p1a = false;
+	p2a = false;
+	p3a = false;
+}
+
+void PolyMask::draw() {
+	ofFill();
+	ofSetColor(0,0,0);
+
+	ofBeginShape();
+		ofVertex( ponto1.x, ponto1.y ,0);
+		ofVertex( ponto2.x, ponto2.y ,0);
+		ofVertex( ponto3.x, ponto3.y ,0);
+	ofEndShape();
+
+	ofSetColor(255,255,255);
+	if(p1a) {
+		ofDrawCircle(ponto1, 10);
+	}
+	if(p2a) {
+		ofDrawCircle(ponto2, 10);
+	}
+	if(p3a) {
+		ofDrawCircle(ponto3, 10);
+	}
+}
+
+void PolyMask::mousePressed(int x, int y) {
+	if(pontoDragged.x == 0 && pontoDragged.y == 0) {
+		pontoDragged.set(x,y);
+	}
+	
+	if(ponto1.distance(pontoDragged) < 10) {
+		p1a = true;
+	} else if(ponto2.distance(pontoDragged) < 10) {
+		p2a = true;
+	} else if(ponto3.distance(pontoDragged) < 10) {
+		p3a = true;
+	} else if( PointInTriangle(pontoDragged) ) {
+		p1a = true;
+		p2a = true;
+		p3a = true;
+	}
+
+}
+
+void PolyMask::mouseDragged(int x, int y) {
+	ofPoint p(x,y);
+	if(p1a) {
+		ponto1 += p - pontoDragged;
+	}
+	if(p2a) {
+		ponto2 += p - pontoDragged;
+	}
+	if(p3a) {
+		ponto3 += p - pontoDragged;
+	}
+}
+
+void PolyMask::mouseReleased(int x, int y) {
+	p1a = false;
+	p2a = false;
+	p3a = false;
+	pontoDragged.set(0,0);
+}
+
+float PolyMask::sign (ofPoint p1, ofPoint p2, ofPoint p3)
+{
+    return (p1.x - p3.x) * (p2.y - p3.y) - (p2.x - p3.x) * (p1.y - p3.y);
+}
+
+bool PolyMask::PointInTriangle (ofPoint pt)
+{
+    bool b1, b2, b3;
+
+    b1 = sign(pt, ponto1, ponto2) < 0.0f;
+    b2 = sign(pt, ponto2, ponto3) < 0.0f;
+    b3 = sign(pt, ponto3, ponto1) < 0.0f;
+
+    return ((b1 == b2) && (b2 == b3));
 }

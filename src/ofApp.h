@@ -3,10 +3,23 @@
 #include "ofMain.h"
 #include "ofxOpenCv.h"
 #include "ofxKinect.h"
-#include "fft.h"
+//#include "fft.h"
 
 #define BUFFER_SIZE 256
 #define NUM_WINDOWS 80
+	
+
+
+void desenhaVariosPoligonos();
+void desenhaPoligono(int vertices, int radius, bool rotate, bool fill);
+void desenhaBrisa(int nBrisa);
+void desenhaBeats(int vertices);
+void desenhaDepthAlpha();
+void desenhaContorno();
+void desenhaCamFloresta();
+void desenhaCamSereias();
+void desenhaOlhoGirassol();
+void desenhaOlhoIllu();
 
 //Beat class
 class Beat {
@@ -22,16 +35,24 @@ public:
 	float opac;
 	float size;
 };
-void desenhaVariosPoligonos();
-void desenhaPoligono(int vertices, int radius, bool rotate, bool fill);
-void desenhaBrisa(int nBrisa);
-void desenhaBeats(int vertices);
-void desenhaDepthAlpha();
-void desenhaContorno();
-void desenhaCamFloresta();
-void desenhaCamSereias();
-void desenhaOlhoGirassol();
-void desenhaOlhoIllu();
+
+//Mask class
+class PolyMask {
+public:
+	void setup();              //Start mask
+	void draw();               //Draw mask
+
+	void mousePressed(int x, int y);
+	void mouseDragged(int x, int y);
+	void mouseReleased(int x, int y);
+
+	float sign (ofPoint p1, ofPoint p2, ofPoint p3);
+	bool PointInTriangle (ofPoint pt);
+
+	ofPoint ponto1, ponto2, ponto3, pontoDragged;
+	bool p1a, p2a, p3a;
+};
+
 
 class ofApp : public ofBaseApp {
 public:
@@ -72,7 +93,7 @@ ofFbo  fboLayer[4];	//buffer para telas
 	float * left;
 	float * right;
 	int 	bufferCounter;
-	fft		myfft;
+	//fft		myfft;
 	
 	float magnitude[BUFFER_SIZE];
 	float magniView[BUFFER_SIZE];
