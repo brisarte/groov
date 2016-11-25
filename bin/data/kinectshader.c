@@ -31,5 +31,12 @@ void main(){
 
   color = color0;  
   color.a = corDepth.b;  
+
+  if(color.a > 0)
+    color.a = color.a*2;
+
+  if(color.a > 1)
+    color.a = 1;
+
   gl_FragColor = color;
 }

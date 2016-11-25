@@ -14,7 +14,7 @@ public:
 	Beat();                //Class constructor
 	void setup();              //Start beat
 	void update( float dt );   //Recalculate physics
-	void draw();               //Draw beat
+	void draw(int vertices);               //Draw beat
 
 	float time;                //Time of living
 	float lifeTime;            //Allowed lifetime
@@ -22,13 +22,16 @@ public:
 	float opac;
 	float size;
 };
-
-void desenhaPoligono(int vertices, int radius);
-void desenhaBeats();
+void desenhaVariosPoligonos();
+void desenhaPoligono(int vertices, int radius, bool rotate, bool fill);
+void desenhaBrisa(int nBrisa);
+void desenhaBeats(int vertices);
 void desenhaDepthAlpha();
-void desenhaLookAtMe();
-void desenhaCamVideo();
-void desenhaBeats();
+void desenhaContorno();
+void desenhaCamFloresta();
+void desenhaCamSereias();
+void desenhaOlhoGirassol();
+void desenhaOlhoIllu();
 
 class ofApp : public ofBaseApp {
 public:
@@ -64,7 +67,7 @@ public:
 
 private:
 	
-ofFbo  fboBack1, fboBack2, fboFront1, fboFront2;	//buffer para telas
+ofFbo  fboLayer[4];	//buffer para telas
 	// Audio
 	float * left;
 	float * right;

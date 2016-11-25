@@ -11,18 +11,30 @@ ofPoint baricenter(0,0), baricentro(0,0);
 
 vector<Beat> b;	  //beats
 ofPoint lookAt;
-ofImage olho, girassol;
+ofImage olho, orbita, girassol;
 ofxCvGrayscaleImage grayImage, blurImage; // grayscale depth image
 ofxKinect kinect;
 
 ofxCvColorImage colorImg;
 
 ofxCvContourFinder contourFinder;
-ofVideoPlayer video;
+ofVideoPlayer video, sereiasloucas;
 
 ofShader shader, shaderInvert; //Shader
 
 ofFbo fbo, fboVideo; //Buffers temporarios
+
+ofColor corMatiz, corMatizComplementar;
+
+float inicioFbo[4];
+int numeroBrisaFbo[4];
+float tempoBrisa = 20, tempoFade = 1;
+float ultimoEvento;
+
+int whiteTotalSlow = 0; // quantidade de coisa na frente da tela
+
+//variaveis pra usar de vez em quando
+int intControl,floatControl;
 
 bool DEBUGMODE = false;
 //--------------------------------------------------------------
@@ -57,22 +69,23 @@ void Beat::update( float dt ){
 }
 
 //--------------------------------------------------------------
-void Beat::draw(){
+void Beat::draw(int vertices){
 	if ( live ) {
 		//Compute color
-		ofColor color = ofColor::red;
-		float hue = ofMap( time, 0, lifeTime, 0, 20 );
-		color.setHue( time0 );
-		ofSetColor( color, opac*255 );
+		ofColor color = corMatiz;
+		ofSetColor( color );
 
-		desenhaPoligono(4,size*vh/1.9);
 
+		desenhaPoligono(vertices,size*vh, false, false);
 	}
 }
 
 //--------------------------------------------------------------
 void ofApp::setup() {
+	// inicia cores
+	corMatiz = ofColor::red;
 
+	intControl = 0;
 	// Aloca memoria com tamanho da viewport
 	vh = 768;
 	vw = 1024;
@@ -97,10 +110,10 @@ void ofApp::setup() {
 	
 	//aloca "layers"
 
-	fboBack1.allocate(vw, vh);
-	fboBack2.allocate(vw, vh);
-	fboFront1.allocate(vw, vh);
-	fboFront2.allocate(vw, vh);
+	fboLayer[0].allocate(vw, vh);
+	fboLayer[1].allocate(vw, vh);
+	fboLayer[2].allocate(vw, vh);
+	fboLayer[3].allocate(vw, vh);
 
 	baricentro.set( blurImage.width/2, blurImage.height/2 );
 	
@@ -121,9 +134,16 @@ void ofApp::setup() {
 	video.load("amazonia.mp4");
 	video.play();
 
+	sereiasloucas.load("sereiasloucas.mp4");
+	sereiasloucas.play();
+
 
 	fboVideo.allocate( video.getWidth(), video.getHeight());
 	fbo.allocate(kinect.width, kinect.height);
+
+	girassol.load("../data/girassol.png");
+	olho.load("../data/olhoillu.png");
+	orbita.load("../data/orbitaillu.png");
 
 	// 0 output channels, 
 	// 2 input channels
@@ -147,11 +167,21 @@ void ofApp::setup() {
 	for (int i=0; i<N; i++) {
 		spectrum[i] = 0.0f;
 	}
+
+	// Controle de fbo
+	for(int i = 0; i < 4; i++) {
+		inicioFbo[i] = -99;
+		numeroBrisaFbo[i] = 4-i;
+	}
+	ultimoEvento = -99;
+
 }
 
 //--------------------------------------------------------------
 void ofApp::update() {
-
+	corMatiz.setHue( int(time0*5)%360 );
+	corMatizComplementar.set(corMatiz);
+	corMatizComplementar.setHue( (int(time0*5)+200) %360);
 	//Compute dt
 	float time = ofGetElapsedTimef();
 	float dt = ofClamp( time - time0, 0, 0.1 );
@@ -230,6 +260,8 @@ void ofApp::update() {
 
 	kinect.update();
 	
+
+
 	// Só executa se aconteceu algo no kinect
 	if(kinect.isFrameNew()) {
 		
@@ -245,8 +277,8 @@ void ofApp::update() {
 
 		unsigned char * pix = blurImage.getPixels();
 		int blurWidth = blurImage.width;
+		int whiteTotal = 0; // quantidade de coisa na frente da tela
 		ofPoint centro( blurWidth/2, blurImage.height/2 );
-		int whiteTotal = 0;
 
 		ofPoint baricentro0 = baricentro;
 
@@ -284,55 +316,227 @@ void ofApp::update() {
 		contourFinder.findContours(grayImage, 10, (kinect.width*kinect.height)/2, 20, false);
 
 
+		// Define pra onde vai ser o foco de visão (baricentro da profundidade)
 	    // Corrige a proporção do ponto para a tela	
+		
 		lookAt.x = ofMap(baricentro.x, 0, blurImage.width, 0, vw);
 		lookAt.y = ofMap(baricentro.y, 0, blurImage.height, 0, vh);
+		
+		whiteTotalSlow = whiteTotalSlow*0.9 + whiteTotal*0.1;
 
 	}
 
+	ofPoint perlinPoint;
+	perlinPoint.x = vw * ofNoise( time0 * 0.15 );
+	perlinPoint.y = vh * ofNoise( time0 * 0.2 );	
 
+	if( whiteTotalSlow < 1000 || whiteTotalSlow > 10000) {
+		lookAt = perlinPoint;
+	}
+		cout << "\nwhiteTotalSlow:" << whiteTotalSlow;
+	
 	//Atualiza frame do video
 	video.update();
+	sereiasloucas.update();
 	
+	//Ativa evento
+	if(time0 - ultimoEvento > tempoBrisa) {
+		ultimoEvento = time0;
 
+		float eventoRand = ofRandom(0,1);
+		cout << "\neventoRand:" << eventoRand;
+		if(eventoRand < 0.2) {
+			//Girassol com beats
+			inicioFbo[0] = time0;
+			inicioFbo[1] = time0;
+			inicioFbo[2] = time0;
+			inicioFbo[3] = time0;
+			numeroBrisaFbo[0] = 0; // null
+			numeroBrisaFbo[1] = 3; // Losangos com beat
+			numeroBrisaFbo[2] = 1; // Girassolho
+			numeroBrisaFbo[3] = 0; // null
+		} else if(eventoRand < 0.4){
+			//illuminati
+			inicioFbo[0] = time0;
+			inicioFbo[1] = time0;
+			inicioFbo[2] = time0;
+			numeroBrisaFbo[0] = 0; // null
+			numeroBrisaFbo[1] = 7; // triangulos
+			numeroBrisaFbo[2] = 2; // olho illu
+		} else if(eventoRand < 0.45){
 
-	fboBack1.begin();
+			//video
+			inicioFbo[0] = time0;
+			inicioFbo[1] = time0;
+			inicioFbo[2] = time0;
+			numeroBrisaFbo[0] = 0; // null
+			numeroBrisaFbo[1] = 0; // null
+			numeroBrisaFbo[2] = 5; // video floresta
 
-	ofBackground(0, 0, 0, 0);
+		} else if(eventoRand < 0.7){
+			//video
+			inicioFbo[0] = time0;
+			inicioFbo[1] = time0;
+			inicioFbo[2] = time0;
+			numeroBrisaFbo[0] = 0; // null
+			numeroBrisaFbo[1] = 0; // null
+			numeroBrisaFbo[2] = 9; // video sereias
+		}
+		
+
+	}
+
+	// Atualiza brisa se ja passou do tempo
+	if(time0 - inicioFbo[0] > tempoBrisa) {
+		float eventoRand = ofRandom(0,1);
+		if(eventoRand < 0.85) {
+			numeroBrisaFbo[0] = 4; // varios poligonos
+		} else if(eventoRand < 0.9) {
+			numeroBrisaFbo[0] = 3; // beats quadrados
+		} else {
+			numeroBrisaFbo[0] = 7; // beats quadrados
+		}
+		inicioFbo[0] = time0;
+	}
+	if(time0 - inicioFbo[1] > tempoBrisa) {
+		numeroBrisaFbo[1] = 0; // null
+		inicioFbo[1] = time0;
+	}
+	if(time0 - inicioFbo[2] > tempoBrisa) {
+		float eventoRand = ofRandom(0,1);
+		if(eventoRand < 0.5) {
+			numeroBrisaFbo[2] = 1; // girasoll
+		} else if(eventoRand < 0.9) {
+			numeroBrisaFbo[2] = 2; // illuminati
+		} else {
+			numeroBrisaFbo[2] = 5; // video
+		}
+		inicioFbo[2] = time0;
+	}
+	if(time0 - inicioFbo[3] > tempoBrisa) {
+		float eventoRand = ofRandom(0,1);
+		if(eventoRand < 0.6) {
+			numeroBrisaFbo[3] = 6; // contornos
+		} else {
+			numeroBrisaFbo[3] = 0; // null
+		}
+		inicioFbo[3] = time0;
+	}
+
+	fboLayer[0].begin();
+		ofBackground(0, 0, 0, 0);		
+		desenhaBrisa(numeroBrisaFbo[0]);
+	fboLayer[0].end();
+
+	fboLayer[1].begin();
+		ofBackground(0, 0, 0, 0);
+		desenhaBrisa(numeroBrisaFbo[1]);
+	fboLayer[1].end();
+
+	fboLayer[2].begin();
+		ofBackground(0, 0, 0, 0);
+		desenhaBrisa(numeroBrisaFbo[2]);
+	fboLayer[2].end();
+
+	fboLayer[3].begin();
+		ofBackground(0, 0, 0, 0);
+		desenhaBrisa(numeroBrisaFbo[3]);
+	fboLayer[3].end();
+
+}
+
+void desenhaBrisa(int nBrisa) {
+	switch (nBrisa) {
+		case 0:
+			//desenha Nada
+		break;
+
+		case 1:
+			desenhaOlhoGirassol();
+		break;
+
+		case 2:
+			desenhaOlhoIllu();
+		break;
+
+		case 3:
+			desenhaBeats(4);
+		break;
+
+		case 4:
+			desenhaVariosPoligonos();
+		break;
+
+		case 5:
+			desenhaCamFloresta();
+		break;
+
+		case 6:
+			desenhaContorno();
+		break;
+
+		case 7:
+			desenhaBeats(3);
+		break;
+
+		case 8:
+			desenhaDepthAlpha();
+		break;
+
+		case 9:
+			desenhaCamSereias();
+		break;
+	}
+}
+
+void desenhaVariosPoligonos() {
 	// Desenha poligono
-	ofSetColor(30,250,230);
-	desenhaPoligono( int(abs(sin(time0)*5)) + 3, sin(time0)*70 + 150 );
+	ofSetColor(corMatizComplementar);
+	desenhaPoligono( int(abs(sin(time0*0.1)*4)) + 4, abs(sin(time0*0.7))*100 + 600 ,true,true);
 
-	fboBack1.end();
+	// Desenha poligono
+	ofSetColor(corMatiz);
+	desenhaPoligono( int(abs(sin(time0*0.1)*4)) + 4, abs(sin(time0*0.7))*100 + 500 ,true,true);
 
-	fboBack2.begin();
-		ofBackground(0, 0, 0, 0);
-		desenhaBeats();
-	fboBack2.end();
+	// Desenha poligono
+	ofSetColor(corMatizComplementar);
+	desenhaPoligono( int(abs(sin(time0*0.1)*4)) + 4, abs(sin(time0*0.7+.1))*100 + 400 ,true,true);
 
-	
+	// Desenha poligono
+	ofSetColor(corMatiz);
+	desenhaPoligono( int(abs(sin(time0*0.1)*4)) + 4, abs(sin(time0*0.7+.2))*100 + 300 ,true,true);
 
-	fboFront1.begin();
-		ofBackground(0, 0, 0, 0);
-	fboFront1.end();
+	// Desenha poligono
+	ofSetColor(corMatizComplementar);
+	desenhaPoligono( int(abs(sin(time0*0.1)*4)) + 4, abs(sin(time0*0.7+.3))*100 + 200 ,true,true);
 
-	fboFront2.begin();
-		ofBackground(0, 0, 0, 0);
-	fboFront2.end();
+	// Desenha poligono
+	ofSetColor(corMatiz);
+	desenhaPoligono( int(abs(sin(time0*0.1)*4)) + 4, abs(sin(time0*0.7)+.4)*100 + 100 ,true,true);
 }
 
 //--------------------------------------------------------------
 void ofApp::draw() {
 	
 	ofBackground(0, 0, 0);
-	ofSetColor(255, 255, 255);
 	
 
 
-	fboBack1.draw(0,0);
-	fboBack2.draw(0,0);
-	fboFront1.draw(0,0);
-	fboFront2.draw(0,0);
+	// Desenha Brisas
+	for(int i = 0; i < 4; i++) {
+
+		// Testa se ja passou tempo pra começar o fade && ainda nao acabou a brisa
+		if(time0 - inicioFbo[i] > (tempoBrisa - tempoFade) && time0 - inicioFbo[i] < tempoBrisa) {
+			ofSetColor(255, 255, 255, ofMap(time0,inicioFbo[i] + tempoBrisa - tempoFade,inicioFbo[i] + tempoBrisa,255,0));
+		}
+		//Testa se ta no comecinho da brisa
+		else if(time0 - inicioFbo[i] < tempoFade) {
+			ofSetColor(255, 255, 255, ofMap(time0,inicioFbo[i],inicioFbo[i]+tempoFade,0,255));
+		} else {
+			ofSetColor(255, 255, 255);
+		}
+		fboLayer[i].draw(0,0);
+	}
     
 
 	if(DEBUGMODE) {
@@ -364,7 +568,7 @@ void ofApp::draw() {
 		ofDrawBitmapString(reportStream.str(), 20, 652);
 
 		// Acompanha posição da pessoa
-    	// blurImage.draw(0,0, vw,vh);
+    	blurImage.draw(0,0, vw,vh);
 		ofSetColor(255, 255, 255);
 		contourFinder.draw(0,0, vw,vh);
 		ofDrawCircle(lookAt, 10);
@@ -375,9 +579,6 @@ void ofApp::draw() {
 			ofLine(200+(i*8),700,200+(i*8),700-spectrum[i]*10.0f);
 		}
 	}
-
-
-
 
 }
 
@@ -396,7 +597,7 @@ void ofApp::getBlurImage(ofxCvGrayscaleImage &imgBlur, int indiceBlur) {
 
 void ofApp::getNearMirror(ofxCvGrayscaleImage &imgGray, int contrasteDistancia) {
 
-	imgGray.mirror(false,true);
+//	imgGray.mirror(false,true);
 	ofPixels & pixNoise = imgGray.getPixels();
 	int numPixelsNoise = pixNoise.size();
 	for (int i = 0; i < numPixelsNoise; i++) {
@@ -406,32 +607,57 @@ void ofApp::getNearMirror(ofxCvGrayscaleImage &imgGray, int contrasteDistancia) 
 }
 
 // Desenha poligono
-void desenhaBeats() {
+void desenhaBeats(int vertices) {
+
+	ofSetColor(corMatiz);
+
+	desenhaPoligono(vertices,vh/2, false, false);
 	// Desenha beats
 	for (int i=0; i<b.size(); i++) {
-		b[i].draw();
+		b[i].draw(vertices);
 	}
 }
 
-// Desenha objeto que "olha" pra pessoa
-void desenhaLookAtMe() {
+
+// Desenha girassol que "olha" pra pessoa
+void desenhaOlhoGirassol() {
 	glPushMatrix();
 
 	glTranslatef(vw/2,vh/2, 0);
+
 	float anguloX = ofMap(lookAt.x,0,vw,-50,50);
 	glRotatef(anguloX, 0, 1, 0); 
 
 	float anguloY = ofMap(lookAt.y,0,vh,-50,50);
 	glRotatef(anguloY, -1, 0, 0); 
+	glRotatef(anguloY+anguloX, 0, 0, 0.2); 
 
 	ofSetColor(255, 255, 255);
 	girassol.setAnchorPercent(0.5, 0.5);
 	girassol.draw(0,0);
 
 	glPopMatrix();
-
 }
-/*
+
+// Desenha piramedo zoiuda que "olha" pra pessoa
+void desenhaOlhoIllu() {
+	glPushMatrix();
+
+	glTranslatef(vw/2,vh/2, 0);
+
+	ofPoint moveOlho;
+	moveOlho.x = ofMap(lookAt.x,0,vw,-25,25);
+	moveOlho.y = ofMap(lookAt.y,0,vh,-15,15);
+
+	olho.setAnchorPercent(0.5, 0.5);
+	orbita.setAnchorPercent(0.5, 0.5);
+
+	olho.draw(moveOlho);
+	orbita.draw(0,0);
+
+	glPopMatrix();
+}
+
 // Desenha depthcam+rgb pelo shader
 void desenhaDepthAlpha() {
 	fbo.begin();
@@ -454,7 +680,7 @@ void desenhaDepthAlpha() {
 }
 
 // Desenha Video invertido pela depthcam
-void desenhaCamVideo() {
+void desenhaCamFloresta() {
 
 	// Desenha depthcam no fbo pra usar de textura
 	fboVideo.begin();
@@ -482,25 +708,77 @@ void desenhaCamVideo() {
 	
 	shader.end();
 }
-*/
+
+// Desenha Video invertido pela depthcam
+void desenhaCamSereias() {
+
+	// Desenha depthcam no fbo pra usar de textura
+	fboVideo.begin();
+	
+	ofSetColor( 255, 255, 255 );
+	grayImage.draw(0, 0, video.getWidth(), video.getHeight());
+
+	fboVideo.end();
+
+	// desenha o video invertido
+	shaderInvert.begin();
+
+	sereiasloucas.draw( 0, 0, 1024, 768);
+
+	shaderInvert.end();
+
+	//desenha video filtrado pela depthcam
+	shader.begin();
+			
+	shader.setUniformTexture( "texture1", fboVideo.getTextureReference(), 1 ); //"1" means that it is texture 1
+
+	//desenha video pelo shader
+	ofSetColor( 255, 255, 255 );
+	sereiasloucas.draw( 0, 0, 1024, 768);
+	
+	shader.end();
+}
+
 // Desenha poligono
-void desenhaPoligono(int vertices, int radius) {
+void desenhaPoligono(int vertices, int radius, bool rotate, bool fill) {
 	if(vertices < 3)
 		vertices = 3;
-	ofFill();
+	//corrigindo tamanho aparente
+	radius = radius - vertices*8;
+	if(fill) {
+		ofFill();
+	}else {
+		ofNoFill();
+	}
 	glPushMatrix();
 
-	glTranslatef(vw/2,vh/2, 0);
+	//Gambizinha pra caso seja o triangulo com beat
+	if(vertices == 3 && !rotate){
+		glTranslatef(vw/2,vh/2+70, 0);
+	} else {
+		// o que aocntecia normalmente antes da gambi
+		glTranslatef(vw/2,vh/2, 0);
+	}
+
+	if (rotate) {
+		glRotatef( sin(time0*0.5)*50 + 	(360/vertices-1)-(360/vertices) + 100, 0, 0, 1); 
+	} else {
+		glRotatef( 180, 0, 0, 1); 
+	}
 
 	ofBeginShape();
-	for(int i = 0; i < vertices; i++) {
+	for(int i = 0; i < vertices+1; i++) {
 		float theta = (TWO_PI/vertices) * i;
 		ofVertex( sin(theta)*radius , cos(theta)*radius ,0);
 	}
 	ofEndShape();
 
-	glRotatef( sin(time0) , 0, 1, 0); 
 	glPopMatrix();
+}
+
+void desenhaContorno() {
+	ofSetColor(255, 255, 255);
+	contourFinder.draw(0,0, vw,vh);
 }
 
 void ofApp::drawPointCloud() {
@@ -568,9 +846,14 @@ void ofApp::keyPressed (int key) {
 			
 		case '+':
 		case '=':
+			intControl++;
+			cout << "\n intControl:" << intControl;
 			break;
 			
 		case '-':
+		case '_':
+			intControl--;
+			cout << "\n intControl:" << intControl;
 			break;
 			
 		case 'w':
