@@ -21,7 +21,7 @@ ofxKinect kinect;
 ofxCvColorImage colorImg;
 
 ofxCvContourFinder contourFinder;
-ofVideoPlayer video, videoMelie4, videoHorror, videoMelie1, videoMermaid,videoAstronomo;
+ofVideoPlayer video, videoMelie4, videoHorror, videoMelie1, videoMermaid,videoAstronomo, gif;
 
 ofShader shader, shaderInvert, shaderVideoAlpha; //Shader
 
@@ -38,6 +38,9 @@ int whiteTotalSlow = 0; // quantidade de coisa na frente da tela
 
 //variaveis pra usar de vez em quando
 int intControl, intControl2,floatControl;
+
+//Image sequence which will be overlayed on backVideo
+vector<vector<ofTexture>> gifs;	
 
 bool DEBUGMODE = false;
 //--------------------------------------------------------------
@@ -140,7 +143,6 @@ void ofApp::setup() {
 
 	videoMelie4.load("viagemlua.mp4");
 	videoMelie4.play();
-
 	videoMermaid.load("mermaid.mp4");
 	videoMermaid.play();
 
@@ -154,6 +156,35 @@ void ofApp::setup() {
 	videoMelie1.load("rubberhead.mp4");
 	videoMelie1.play();
 
+	//1. Pasta de gifs
+	ofDirectory dirgifs;
+	//2. Carrega numero de pastas de sequencias
+	int ngifs = dirgifs.listDir("gifs");
+	//3. Set array size 
+	gifs.resize( ngifs );
+
+	//4. Abre pastas
+	for (int i=0; i<ngifs; i++) {	
+		//Pega caminho da pasta
+		string folderName = dirgifs.getPath( i );	
+
+		ofDirectory dirgif;
+		//5. Carrega numero de img da sequencia
+		int nimg = dirgif.listDir(folderName);
+		//6. Set array img size 
+		gifs[i].resize( nimg );
+		//7. Load images
+		for (int j=0; j<nimg; j++) {
+			//Getting i-th file name
+			string fileName = dirgif.getPath( j );	
+
+			//Load i-th image
+			ofLoadImage( gifs[i][j], fileName );
+		}
+	}
+
+	//gif.load("bocarosa.gif");
+	//gif.play();
 
 	fboVideo.allocate( video.getWidth(), video.getHeight());
 	fbo.allocate(kinect.width, kinect.height);
@@ -384,7 +415,7 @@ void ofApp::update() {
 			inicioFbo[0] = time0;
 			inicioFbo[1] = time0;
 			inicioFbo[2] = time0;
-			numeroBrisaFbo[0] = 0; // null
+			numeroBrisaFbo[0] = 0; // nullfdg
 			numeroBrisaFbo[1] = 0; // null
 			numeroBrisaFbo[2] = 5; // video floresta
 
@@ -633,9 +664,6 @@ void ofApp::draw() {
 	}
 
 	ofFill();
-	ofSetColor(0,0,0, 253);
-	ofDrawRectangle(320,520,389,247);
-
 	ofSetColor(corMatizComplementar, 150);
 
 	logoBrisa.draw(vw*0.2 + intControl -145 ,vh*0.6 + intControl2, logoBrisa.getWidth()*0.3, logoBrisa.getHeight()*0.3 );
@@ -646,6 +674,22 @@ void ofApp::draw() {
 
 	if(mostraMsg) {
 		msg.draw(434,322);
+	}
+
+	ofSetColor(255,255,255);
+
+	//4. Abre pastas
+	for (int i=0; i<gifs.size(); i++) {	
+
+		int ngif = gifs[i].size();
+		float duration = ngif / 24.0; //12fps		
+		float pos = fmodf( time0, duration ); // [0..duration]
+		//5. Convert pos in the frame number
+		int j = int( pos / duration * ngif );
+
+		gifs[i][j].setAnchorPercent( 0.5, 0.5 );
+		gifs[i][j].draw( vw/2 + i*600, vh/2 ); ;
+		
 	}
 
 }
