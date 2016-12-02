@@ -20,6 +20,7 @@ void desenhaCamFloresta();
 void desenhaCamSereias();
 void desenhaOlhoGirassol();
 void desenhaOlhoIllu();
+void desenhaAlphaVideoRGB(ofVideoPlayer &vid);
 void addMask();
 
 //Beat class

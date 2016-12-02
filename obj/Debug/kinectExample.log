@@ -1,0 +1,7 @@
+﻿  main.cpp
+  ofApp.cpp
+     Creating library bin\kinectExample_debug.lib and object bin\kinectExample_debug.exp
+main.obj : error LNK2019: unresolved external symbol "public: __thiscall fft::fft(void)" (??0fft@@QAE@XZ) referenced in function "public: __thiscall ofApp::ofApp(void)" (??0ofApp@@QAE@XZ)
+main.obj : error LNK2019: unresolved external symbol "public: __thiscall fft::~fft(void)" (??1fft@@QAE@XZ) referenced in function "public: virtual __thiscall ofApp::~ofApp(void)" (??1ofApp@@UAE@XZ)
+ofApp.obj : error LNK2019: unresolved external symbol "public: void __thiscall fft::powerSpectrum(int,int,float *,int,float *,float *,float *,float *)" (?powerSpectrum@fft@@QAEXHHPAMH0000@Z) referenced in function "public: virtual void __thiscall ofApp::update(void)" (?update@ofApp@@UAEXXZ)
+bin\kinectExample_debug.exe : fatal error LNK1120: 3 unresolved externals

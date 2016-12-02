@@ -13,18 +13,19 @@ vector<Beat> b;	  //beats
 
 vector<PolyMask> masks;	//Array of sliders
 ofPoint lookAt;
-ofImage olho, orbita, girassol;
+ofImage olho, orbita, girassol, logoBrisa, msg;
+bool mostraMsg=false;
 ofxCvGrayscaleImage grayImage, blurImage; // grayscale depth image
 ofxKinect kinect;
 
 ofxCvColorImage colorImg;
 
 ofxCvContourFinder contourFinder;
-ofVideoPlayer video, sereiasloucas;
+ofVideoPlayer video, videoMelie4, videoHorror, videoMelie1, videoMermaid,videoAstronomo;
 
-ofShader shader, shaderInvert; //Shader
+ofShader shader, shaderInvert, shaderVideoAlpha; //Shader
 
-ofFbo fbo, fboVideo; //Buffers temporarios
+ofFbo fbo, fboVideo, fbo1024; //Buffers temporarios
 
 ofColor corMatiz, corMatizComplementar;
 
@@ -36,7 +37,7 @@ float ultimoEvento;
 int whiteTotalSlow = 0; // quantidade de coisa na frente da tela
 
 //variaveis pra usar de vez em quando
-int intControl,floatControl;
+int intControl, intControl2,floatControl;
 
 bool DEBUGMODE = false;
 //--------------------------------------------------------------
@@ -131,21 +132,38 @@ void ofApp::setup() {
 	//Load shader
 	shader.load( "vertexdummy.c", "kinectshader.c" );
 	shaderInvert.load( "vertexdummy.c", "invertshader.c" );
+	shaderVideoAlpha.load( "vertexdummy.c", "videowhitealpha.c");
 
 	//Carrega o vídeo
 	video.load("amazonia.mp4");
 	video.play();
 
-	sereiasloucas.load("sereiasloucas.mp4");
-	sereiasloucas.play();
+	videoMelie4.load("viagemlua.mp4");
+	videoMelie4.play();
+
+	videoMermaid.load("mermaid.mp4");
+	videoMermaid.play();
+
+
+	videoHorror.load("caligari.mp4");
+	videoHorror.play();
+
+	videoAstronomo.load("astronomo.mp4");
+	videoAstronomo.play();
+
+	videoMelie1.load("rubberhead.mp4");
+	videoMelie1.play();
 
 
 	fboVideo.allocate( video.getWidth(), video.getHeight());
 	fbo.allocate(kinect.width, kinect.height);
+	fbo1024.allocate(1024, 768);
 
 	girassol.load("../data/girassol.png");
+	msg.load("../data/msg.png");
 	olho.load("../data/olhoillu.png");
 	orbita.load("../data/orbitaillu.png");
+	logoBrisa.load("../data/logobrisarte.png");
 
 	// 0 output channels, 
 	// 2 input channels
@@ -262,8 +280,6 @@ void ofApp::update() {
 
 	kinect.update();
 	
-
-
 	// Só executa se aconteceu algo no kinect
 	if(kinect.isFrameNew()) {
 		
@@ -273,7 +289,7 @@ void ofApp::update() {
 
 		// load grayscale depth image from the kinect source
 		blurImage = grayImage;
-		getBlurImage(blurImage, 121);
+		getBlurImage(blurImage, 111);
 
 		// Calcula "baricentro"
 
@@ -332,14 +348,11 @@ void ofApp::update() {
 	perlinPoint.x = vw * ofNoise( time0 * 0.15 );
 	perlinPoint.y = vh * ofNoise( time0 * 0.2 );	
 
-	if( whiteTotalSlow < 1000 || whiteTotalSlow > 10000) {
+	if( whiteTotalSlow < 1000 || whiteTotalSlow > 7000) {
 		lookAt = perlinPoint;
 	}
-		cout << "\nwhiteTotalSlow:" << whiteTotalSlow;
 	
-	//Atualiza frame do video
-	video.update();
-	sereiasloucas.update();
+	
 	
 	//Ativa evento
 	if(time0 - ultimoEvento > tempoBrisa) {
@@ -353,8 +366,8 @@ void ofApp::update() {
 			inicioFbo[1] = time0;
 			inicioFbo[2] = time0;
 			inicioFbo[3] = time0;
-			numeroBrisaFbo[0] = 0; // null
-			numeroBrisaFbo[1] = 3; // Losangos com beat
+			numeroBrisaFbo[0] = 10; // video
+			numeroBrisaFbo[1] = 4; // Losangos com beat
 			numeroBrisaFbo[2] = 1; // Girassolho
 			numeroBrisaFbo[3] = 0; // null
 		} else if(eventoRand < 0.4){
@@ -362,7 +375,7 @@ void ofApp::update() {
 			inicioFbo[0] = time0;
 			inicioFbo[1] = time0;
 			inicioFbo[2] = time0;
-			numeroBrisaFbo[0] = 0; // null
+			numeroBrisaFbo[0] = 9; // video
 			numeroBrisaFbo[1] = 7; // triangulos
 			numeroBrisaFbo[2] = 2; // olho illu
 		} else if(eventoRand < 0.45){
@@ -383,8 +396,18 @@ void ofApp::update() {
 			numeroBrisaFbo[0] = 0; // null
 			numeroBrisaFbo[1] = 0; // null
 			numeroBrisaFbo[2] = 9; // video sereias
+		} else if(eventoRand < 0.8){
+			//video
+			inicioFbo[0] = time0;
+			inicioFbo[2] = time0;
+			numeroBrisaFbo[0] = 0; // null
+			numeroBrisaFbo[2] = 12; // video sereias
 		}
 		
+		/* Horror
+		inicioFbo[2] = 0; // null
+		numeroBrisaFbo[2] = 13; // video caligari
+		*/
 
 	}
 
@@ -406,18 +429,24 @@ void ofApp::update() {
 	}
 	if(time0 - inicioFbo[2] > tempoBrisa) {
 		float eventoRand = ofRandom(0,1);
-		if(eventoRand < 0.5) {
+		if(eventoRand < 0.1) {
 			numeroBrisaFbo[2] = 1; // girasoll
-		} else if(eventoRand < 0.9) {
+		} else if(eventoRand < 0.2) {
 			numeroBrisaFbo[2] = 2; // illuminati
-		} else {
+		} else if(eventoRand < 0.4) {
 			numeroBrisaFbo[2] = 5; // video
-		}
+		} else if(eventoRand < 0.5) {
+			numeroBrisaFbo[2] = 12; // astronomo
+		} else if(eventoRand < 0.6) {
+			numeroBrisaFbo[2] = 11; // rubberhead
+		} else  {
+			numeroBrisaFbo[2] = 9; // lua
+		} 
 		inicioFbo[2] = time0;
 	}
 	if(time0 - inicioFbo[3] > tempoBrisa) {
 		float eventoRand = ofRandom(0,1);
-		if(eventoRand < 0.6) {
+		if(eventoRand < 0.8) {
 			numeroBrisaFbo[3] = 6; // contornos
 		} else {
 			numeroBrisaFbo[3] = 0; // null
@@ -487,6 +516,22 @@ void desenhaBrisa(int nBrisa) {
 
 		case 9:
 			desenhaCamSereias();
+		break;
+
+		case 10:
+			desenhaAlphaVideoRGB(videoMermaid);
+		break;
+
+		case 11:
+			desenhaAlphaVideoRGB(videoMelie1);
+		break;
+
+		case 12:
+			desenhaAlphaVideoRGB(videoAstronomo);
+		break;
+
+		case 13:
+			desenhaAlphaVideoRGB(videoHorror);
 		break;
 	}
 }
@@ -587,6 +632,22 @@ void ofApp::draw() {
 		m.draw();
 	}
 
+	ofFill();
+	ofSetColor(0,0,0, 253);
+	ofDrawRectangle(320,520,389,247);
+
+	ofSetColor(corMatizComplementar, 150);
+
+	logoBrisa.draw(vw*0.2 + intControl -145 ,vh*0.6 + intControl2, logoBrisa.getWidth()*0.3, logoBrisa.getHeight()*0.3 );
+
+
+	ofSetColor(corMatizComplementar);
+	//ofSetColor(255,255,255);
+
+	if(mostraMsg) {
+		msg.draw(434,322);
+	}
+
 }
 
 void ofApp::getBlurImage(ofxCvGrayscaleImage &imgBlur, int indiceBlur) {
@@ -630,7 +691,7 @@ void desenhaBeats(int vertices) {
 void desenhaOlhoGirassol() {
 	glPushMatrix();
 
-	glTranslatef(vw/2,vh/2, 0);
+	glTranslatef(vw/2,vh/2 + 10, 0);
 
 	float anguloX = ofMap(lookAt.x,0,vw,-50,50);
 	glRotatef(anguloX, 0, 1, 0); 
@@ -665,12 +726,12 @@ void desenhaOlhoIllu() {
 	glPopMatrix();
 }
 
-// Desenha depthcam+rgb pelo shader
+// Desenha video transparent+rgb pelo shader
 void desenhaDepthAlpha() {
 	fbo.begin();
 	
 	ofSetColor( 255, 255, 255 );
-	grayImage.draw(0, 0, kinect.width, kinect.height);
+	kinect.draw(0, 0, kinect.width, kinect.height);
 
 	fbo.end();
 
@@ -686,6 +747,29 @@ void desenhaDepthAlpha() {
 	shader.end();
 }
 
+// Desenha depthcam+rgb pelo shader
+void desenhaAlphaVideoRGB( ofVideoPlayer &vid) {
+	// Desenha depthcam no fbo pra usar de textura
+	fboVideo.begin();
+	
+	ofSetColor( 255, 255, 255 );
+	grayImage.draw(0, 0, video.getWidth(), video.getHeight());
+
+	fboVideo.end();
+	vid.update();
+	
+	kinect.draw(0, 0, vw, vh);
+
+	// desenha o video invertido
+	shaderInvert.begin();
+
+	shaderInvert.setUniformTexture( "texture1", fboVideo.getTextureReference(), 1 );
+	vid.draw( 0, 0, 1024, 768);
+
+	shaderInvert.end();
+
+}
+
 // Desenha Video invertido pela depthcam
 void desenhaCamFloresta() {
 
@@ -696,10 +780,11 @@ void desenhaCamFloresta() {
 	grayImage.draw(0, 0, video.getWidth(), video.getHeight());
 
 	fboVideo.end();
-
+	video.update();
 	// desenha o video invertido
 	shaderInvert.begin();
 
+	shaderInvert.setUniformTexture( "texture1", fboVideo.getTextureReference(), 1 );
 	video.draw( 0, 0, 1024, 768);
 
 	shaderInvert.end();
@@ -719,6 +804,7 @@ void desenhaCamFloresta() {
 // Desenha Video invertido pela depthcam
 void desenhaCamSereias() {
 
+	videoMelie4.update();
 	// Desenha depthcam no fbo pra usar de textura
 	fboVideo.begin();
 	
@@ -730,7 +816,7 @@ void desenhaCamSereias() {
 	// desenha o video invertido
 	shaderInvert.begin();
 
-	sereiasloucas.draw( 0, 0, 1024, 768);
+	videoMelie4.draw( 0, 0, 1024, 768);
 
 	shaderInvert.end();
 
@@ -741,7 +827,7 @@ void desenhaCamSereias() {
 
 	//desenha video pelo shader
 	ofSetColor( 255, 255, 255 );
-	sereiasloucas.draw( 0, 0, 1024, 768);
+	videoMelie4.draw( 0, 0, 1024, 768);
 	
 	shader.end();
 }
@@ -835,6 +921,9 @@ void ofApp::keyPressed (int key) {
 		case ' ':
 			break;
 			
+		case'f':
+			mostraMsg = !mostraMsg;
+			break;
 		case'p':
 			bDrawPointCloud = !bDrawPointCloud;
 			break;
@@ -845,10 +934,12 @@ void ofApp::keyPressed (int key) {
 			
 		case '>':
 		case '.':
+			intControl2++;
 			break;
 			
 		case '<':
 		case ',':
+			intControl2--;
 			break;
 			
 		case '+':
