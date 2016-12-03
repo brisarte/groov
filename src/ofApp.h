@@ -17,11 +17,18 @@ void desenhaBeats(int vertices);
 void desenhaDepthAlpha();
 void desenhaContorno();
 void desenhaCamFloresta();
-void desenhaCamSereias();
+void desenhaViagemLua();
 void desenhaOlhoGirassol();
+void desenhaSombraMirror();
 void desenhaOlhoIllu();
+void desenhaGifFundo();
+void desenhaGifOriginal();
+void desenhaGifMetade();
 void desenhaAlphaVideoRGB(ofVideoPlayer &vid);
 void addMask();
+
+
+void atualizaSombraMirror(ofxCvGrayscaleImage imgAtual, float iRastro);
 
 //Beat class
 class Beat {

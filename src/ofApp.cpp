@@ -21,7 +21,7 @@ ofxKinect kinect;
 ofxCvColorImage colorImg;
 
 ofxCvContourFinder contourFinder;
-ofVideoPlayer video, videoMelie4, videoHorror, videoMelie1, videoMermaid,videoAstronomo, gif;
+ofVideoPlayer video, videoViagemLua, videoHorror, videoMelie1, videoMermaid,videoAstronomo;
 
 ofShader shader, shaderInvert, shaderVideoAlpha; //Shader
 
@@ -31,7 +31,7 @@ ofColor corMatiz, corMatizComplementar;
 
 float inicioFbo[4];
 int numeroBrisaFbo[4];
-float tempoBrisa = 20, tempoFade = 1;
+float tempoBrisa = 10, tempoFade = 2;
 float ultimoEvento;
 
 int whiteTotalSlow = 0; // quantidade de coisa na frente da tela
@@ -39,9 +39,15 @@ int whiteTotalSlow = 0; // quantidade de coisa na frente da tela
 //variaveis pra usar de vez em quando
 int intControl, intControl2,floatControl;
 
-//Image sequence which will be overlayed on backVideo
-vector<vector<ofTexture>> gifs;	
+//gifs
+vector<vector<ofTexture>> gifs01,gifs02,gifs03,gifs04;	
 
+
+ofxCvGrayscaleImage sombra;
+ofxCvGrayscaleImage sombraMirror;
+
+ofColor verdeCor(0,231,109), cianoCor(0,255,255), laranjaCor(254,165,1), rosaCor(255,82,110);
+ofColor coresRole[4];
 bool DEBUGMODE = false;
 //--------------------------------------------------------------
 //----------------------  Particle  ----------------------------
@@ -113,6 +119,8 @@ void ofApp::setup() {
 	colorImg.allocate(kinect.width, kinect.height);
 	grayImage.allocate(kinect.width, kinect.height);
 	blurImage.allocate(kinect.width, kinect.height);
+	sombra.allocate(kinect.width, kinect.height);
+	sombraMirror.allocate(kinect.width, kinect.height);
 	
 	//aloca "layers"
 
@@ -141,8 +149,8 @@ void ofApp::setup() {
 	video.load("amazonia.mp4");
 	video.play();
 
-	videoMelie4.load("viagemlua.mp4");
-	videoMelie4.play();
+	videoViagemLua.load("viagemlua.mp4");
+	videoViagemLua.play();
 	videoMermaid.load("mermaid.mp4");
 	videoMermaid.play();
 
@@ -159,9 +167,9 @@ void ofApp::setup() {
 	//1. Pasta de gifs
 	ofDirectory dirgifs;
 	//2. Carrega numero de pastas de sequencias
-	int ngifs = dirgifs.listDir("gifs");
+	int ngifs = dirgifs.listDir("gifs/01fullscreen");
 	//3. Set array size 
-	gifs.resize( ngifs );
+	gifs01.resize( ngifs );
 
 	//4. Abre pastas
 	for (int i=0; i<ngifs; i++) {	
@@ -172,19 +180,91 @@ void ofApp::setup() {
 		//5. Carrega numero de img da sequencia
 		int nimg = dirgif.listDir(folderName);
 		//6. Set array img size 
-		gifs[i].resize( nimg );
+		gifs01[i].resize( nimg );
 		//7. Load images
 		for (int j=0; j<nimg; j++) {
 			//Getting i-th file name
 			string fileName = dirgif.getPath( j );	
 
 			//Load i-th image
-			ofLoadImage( gifs[i][j], fileName );
+			ofLoadImage( gifs01[i][j], fileName );
 		}
 	}
 
-	//gif.load("bocarosa.gif");
-	//gif.play();
+	//2. Carrega numero de pastas de sequencias
+	ngifs = dirgifs.listDir("gifs/02fullscreen");
+	//3. Set array size 
+	gifs02.resize( ngifs );
+
+	//4. Abre pastas
+	for (int i=0; i<ngifs; i++) {	
+		//Pega caminho da pasta
+		string folderName = dirgifs.getPath( i );	
+
+		ofDirectory dirgif;
+		//5. Carrega numero de img da sequencia
+		int nimg = dirgif.listDir(folderName);
+		//6. Set array img size 
+		gifs02[i].resize( nimg );
+		//7. Load images
+		for (int j=0; j<nimg; j++) {
+			//Getting i-th file name
+			string fileName = dirgif.getPath( j );	
+
+			//Load i-th image
+			ofLoadImage( gifs02[i][j], fileName );
+		}
+	}
+	
+	//2. Carrega numero de pastas de sequencias
+	ngifs = dirgifs.listDir("gifs/03original");
+	//3. Set array size 
+	gifs03.resize( ngifs );
+
+	//4. Abre pastas
+	for (int i=0; i<ngifs; i++) {	
+		//Pega caminho da pasta
+		string folderName = dirgifs.getPath( i );	
+
+		ofDirectory dirgif;
+		//5. Carrega numero de img da sequencia
+		int nimg = dirgif.listDir(folderName);
+		//6. Set array img size 
+		gifs03[i].resize( nimg );
+		//7. Load images
+		for (int j=0; j<nimg; j++) {
+			//Getting i-th file name
+			string fileName = dirgif.getPath( j );	
+
+			//Load i-th image
+			ofLoadImage( gifs03[i][j], fileName );
+		}
+	}
+
+	//2. Carrega numero de pastas de sequencias
+	ngifs = dirgifs.listDir("gifs/04metade");
+	//3. Set array size 
+	gifs04.resize( ngifs );
+
+	//4. Abre pastas
+	for (int i=0; i<ngifs; i++) {	
+		//Pega caminho da pasta
+		string folderName = dirgifs.getPath( i );	
+
+		ofDirectory dirgif;
+		//5. Carrega numero de img da sequencia
+		int nimg = dirgif.listDir(folderName);
+		//6. Set array img size 
+		gifs04[i].resize( nimg );
+		//7. Load images
+		for (int j=0; j<nimg; j++) {
+			//Getting i-th file name
+			string fileName = dirgif.getPath( j );	
+
+			//Load i-th image
+			ofLoadImage( gifs04[i][j], fileName );
+		}
+	}
 
 	fboVideo.allocate( video.getWidth(), video.getHeight());
 	fbo.allocate(kinect.width, kinect.height);
@@ -226,11 +306,19 @@ void ofApp::setup() {
 	}
 	ultimoEvento = -99;
 
+
+	coresRole[0] = verdeCor;
+	coresRole[1] = cianoCor;
+	coresRole[2] = laranjaCor;
+	coresRole[3] = rosaCor;
 }
 
 //--------------------------------------------------------------
 void ofApp::update() {
-	corMatiz.setHue( int(time0*5)%360 );
+
+	int indCor = fmodf( time0/8, 4); // [0..4]
+	corMatiz = coresRole[indCor];
+
 	corMatizComplementar.set(corMatiz);
 	corMatizComplementar.setHue( (int(time0*5)+200) %360);
 	//Compute dt
@@ -322,6 +410,7 @@ void ofApp::update() {
 		blurImage = grayImage;
 		getBlurImage(blurImage, 111);
 
+		atualizaSombraMirror(grayImage, 0.95 );
 		// Calcula "baricentro"
 
 		unsigned char * pix = blurImage.getPixels();
@@ -391,7 +480,7 @@ void ofApp::update() {
 
 		float eventoRand = ofRandom(0,1);
 		cout << "\neventoRand:" << eventoRand;
-		if(eventoRand < 0.2) {
+		if(eventoRand < 0.1) {
 			//Girassol com beats
 			inicioFbo[0] = time0;
 			inicioFbo[1] = time0;
@@ -401,15 +490,15 @@ void ofApp::update() {
 			numeroBrisaFbo[1] = 4; // Losangos com beat
 			numeroBrisaFbo[2] = 1; // Girassolho
 			numeroBrisaFbo[3] = 0; // null
-		} else if(eventoRand < 0.4){
+		} else if(eventoRand < 0.2){
 			//illuminati
 			inicioFbo[0] = time0;
 			inicioFbo[1] = time0;
 			inicioFbo[2] = time0;
-			numeroBrisaFbo[0] = 9; // video
+			numeroBrisaFbo[0] = 9; // video viagem lua
 			numeroBrisaFbo[1] = 7; // triangulos
 			numeroBrisaFbo[2] = 2; // olho illu
-		} else if(eventoRand < 0.45){
+		} else if(eventoRand < 0.35){
 
 			//video
 			inicioFbo[0] = time0;
@@ -419,43 +508,52 @@ void ofApp::update() {
 			numeroBrisaFbo[1] = 0; // null
 			numeroBrisaFbo[2] = 5; // video floresta
 
-		} else if(eventoRand < 0.7){
+		} else if(eventoRand < 0.4){
 			//video
 			inicioFbo[0] = time0;
+			numeroBrisaFbo[0] = 9; // Melie Viagem Lua
+		} else if(eventoRand < 0.45){
+			//video
+			inicioFbo[0] = time0;
+			numeroBrisaFbo[0] = 12; // video astronome
+		} else if(eventoRand < 0.5){
+			//video
 			inicioFbo[1] = time0;
 			inicioFbo[2] = time0;
-			numeroBrisaFbo[0] = 0; // null
+			inicioFbo[3] = time0;
 			numeroBrisaFbo[1] = 0; // null
-			numeroBrisaFbo[2] = 9; // video sereias
-		} else if(eventoRand < 0.8){
-			//video
-			inicioFbo[0] = time0;
-			inicioFbo[2] = time0;
-			numeroBrisaFbo[0] = 0; // null
-			numeroBrisaFbo[2] = 12; // video sereias
+			numeroBrisaFbo[2] = 17; // sombras coloridas
+			numeroBrisaFbo[3] = 0; // null
 		}
 		
-		/* Horror
-		inicioFbo[2] = 0; // null
-		numeroBrisaFbo[2] = 13; // video caligari
-		*/
+		
+		
 
 	}
 
 	// Atualiza brisa se ja passou do tempo
 	if(time0 - inicioFbo[0] > tempoBrisa) {
 		float eventoRand = ofRandom(0,1);
-		if(eventoRand < 0.85) {
-			numeroBrisaFbo[0] = 4; // varios poligonos
+		if(eventoRand < 0.75) {
+			numeroBrisaFbo[0] = 14; // gif fullscreen
 		} else if(eventoRand < 0.9) {
 			numeroBrisaFbo[0] = 3; // beats quadrados
 		} else {
-			numeroBrisaFbo[0] = 7; // beats quadrados
+			numeroBrisaFbo[0] = 7; // beats triang
 		}
 		inicioFbo[0] = time0;
 	}
 	if(time0 - inicioFbo[1] > tempoBrisa) {
-		numeroBrisaFbo[1] = 0; // null
+		float eventoRand = ofRandom(0,1);
+		if(eventoRand < 0.3) {
+			numeroBrisaFbo[1] = 4; // varios poligonos
+		} else if(eventoRand < 0.4) {
+			numeroBrisaFbo[1] = 3; // beats quadrados
+		} else if(eventoRand < 0.5) {
+			numeroBrisaFbo[1] = 7; // beats triang
+		} else if(eventoRand < 0.6) {
+			numeroBrisaFbo[1] = 17; // sombras coloridas
+		}
 		inicioFbo[1] = time0;
 	}
 	if(time0 - inicioFbo[2] > tempoBrisa) {
@@ -464,21 +562,29 @@ void ofApp::update() {
 			numeroBrisaFbo[2] = 1; // girasoll
 		} else if(eventoRand < 0.2) {
 			numeroBrisaFbo[2] = 2; // illuminati
-		} else if(eventoRand < 0.4) {
+		} else if(eventoRand < 0.3) {
 			numeroBrisaFbo[2] = 5; // video
-		} else if(eventoRand < 0.5) {
+		} else if(eventoRand < 0.31) {
 			numeroBrisaFbo[2] = 12; // astronomo
-		} else if(eventoRand < 0.6) {
+		} else if(eventoRand < 0.32) {
 			numeroBrisaFbo[2] = 11; // rubberhead
-		} else  {
-			numeroBrisaFbo[2] = 9; // lua
-		} 
+		} else  if(eventoRand < 0.33) {
+			numeroBrisaFbo[2] = 11; // rubberhead
+		} else  if(eventoRand < 0.4) {
+			numeroBrisaFbo[2] = 15; // gif original
+		} else {
+			numeroBrisaFbo[2] = 0; // null
+		}
 		inicioFbo[2] = time0;
 	}
 	if(time0 - inicioFbo[3] > tempoBrisa) {
 		float eventoRand = ofRandom(0,1);
-		if(eventoRand < 0.8) {
+		if(eventoRand < 0.5) {
 			numeroBrisaFbo[3] = 6; // contornos
+		} else if(eventoRand < 0.55) {
+			numeroBrisaFbo[3] = 16; // gif metade
+		} else if(eventoRand < 0.67) {
+			numeroBrisaFbo[3] = 17; // gif metade
 		} else {
 			numeroBrisaFbo[3] = 0; // null
 		}
@@ -505,6 +611,26 @@ void ofApp::update() {
 		desenhaBrisa(numeroBrisaFbo[3]);
 	fboLayer[3].end();
 
+}
+
+void atualizaSombraMirror(ofxCvGrayscaleImage imgAtual, float iRastro) {
+	
+	sombra.blur(11);
+	sombra.blur(11);
+	sombra.erode();
+	sombra.dilate();
+	sombra.erode();
+	ofPixels & pixF = sombra.getPixels();
+	ofPixels & pixA = imgAtual.getPixels();
+	int numPixels = pixF.size();
+	for (int i = 0; i < numPixels; i++) {
+		pixF[i] =ofClamp(pixF[i] * iRastro + pixA[i] * (1.2 - iRastro),0,255); // Aumenta contraste de distancia
+	}
+	sombra.flagImageChanged();
+	sombra.blur(11);
+
+	sombraMirror = sombra;
+	sombraMirror.mirror(false, true);
 }
 
 void desenhaBrisa(int nBrisa) {
@@ -546,7 +672,7 @@ void desenhaBrisa(int nBrisa) {
 		break;
 
 		case 9:
-			desenhaCamSereias();
+			desenhaViagemLua();
 		break;
 
 		case 10:
@@ -564,13 +690,118 @@ void desenhaBrisa(int nBrisa) {
 		case 13:
 			desenhaAlphaVideoRGB(videoHorror);
 		break;
+
+		case 14:
+			desenhaGifFundo();
+		break;
+
+		case 15:
+			desenhaGifOriginal();
+		break;
+
+		case 16:
+			desenhaGifMetade();
+		break;
+
+		case 17:
+			desenhaSombraMirror();
+		break;
 	}
+}
+
+void desenhaGifFundo() {
+	
+
+	float i = fmodf( time0/10, gifs01.size() ); // [0..duration]
+
+	int ngif = gifs01[i].size();
+	float duration = ngif / 12.0; //25fps		
+	float pos = fmodf( time0, duration ); // [0..duration]
+	//5. Convert pos in the frame number
+	int j = int( pos / duration * ngif );
+
+	gifs01[i][j].setAnchorPercent( 0.5, 0.5 );
+
+	 // Encontra proporção para redimensionar p fullscreen
+	int imgOldH = gifs01[i][j].getHeight();
+	int imgOldW = gifs01[i][j].getWidth();
+	float imgProp = imgOldW/imgOldH;
+	int imgNewWidth = vw;
+	int imgNewHeight = vh;
+	if( imgProp < (4.0/3.0) ) {
+		imgNewHeight = (vw*imgOldH)/imgOldW;
+	} else {
+		imgNewWidth = (vh*imgOldW)/imgOldH;
+	}
+	gifs01[i][j].draw( vw/2 , vh/2, imgNewWidth, imgNewHeight); 
+	
+}
+
+
+void desenhaGifOriginal() {
+
+	float i = fmodf( time0, gifs03.size() ); // [0..duration]
+
+	int ngif = gifs03[i].size();
+	float duration = ngif / 12.0; //12fps		
+	float pos = fmodf( time0, duration ); // [0..duration]
+	//5. Convert pos in the frame number
+	int j = int( pos / duration * ngif );
+
+	gifs03[i][j].setAnchorPercent( 0.5, 0.5 );
+	gifs03[i][j].draw( vw/2, vh/2 ); 
+	
+}
+
+void desenhaGifMetade() {
+
+	float i = fmodf( time0, gifs04.size() ); // [0..duration]
+
+	int ngif = gifs04[i].size();
+	float duration = ngif / 12.0; //12fps		
+	float pos = fmodf( time0, duration ); // [0..duration]
+	//5. Convert pos in the frame number
+	int j = int( pos / duration * ngif );
+
+	gifs04[i][j].setAnchorPercent( 0.5, 0.5 );
+
+	int imgNewHeight = gifs04[i][j].getHeight()/2;
+	int imgNewWidth =  gifs04[i][j].getWidth()/2;
+	gifs04[i][j].draw( vw/2, vh/2, imgNewWidth, imgNewHeight );
+	
+}
+
+void desenhaSombraMirror() {
+
+
+	int c1 = fmodf( time0/7, 4); // [0..duration]
+	int c2 = fmodf( time0/8, 4); // [0..duration]
+	if(c1==c2) {
+		c1++;
+		c1 %= 4;
+	}
+
+	ofEnableBlendMode(OF_BLENDMODE_ADD);
+
+	ofSetColor(coresRole[c1]);
+	sombra.draw(-10,-10,vw+20,vh+20);
+	ofSetColor(coresRole[c2]);
+	sombraMirror.draw(-10,-10,vw+20,vh+20);
+	ofEnableBlendMode(OF_BLENDMODE_ALPHA);
 }
 
 void desenhaVariosPoligonos() {
 	// Desenha poligono
 	ofSetColor(corMatizComplementar);
-	desenhaPoligono( int(abs(sin(time0*0.1)*4)) + 4, abs(sin(time0*0.7))*100 + 600 ,true,true);
+	desenhaPoligono( int(abs(sin(time0*0.1)*4)) + 4, abs(sin(time0*0.7-.3))*100 + 800 ,true,true);
+
+	// Desenha poligono
+	ofSetColor(corMatiz);
+	desenhaPoligono( int(abs(sin(time0*0.1)*4)) + 4, abs(sin(time0*0.7-.2))*100 + 700 ,true,true);
+
+	// Desenha poligono
+	ofSetColor(corMatizComplementar);
+	desenhaPoligono( int(abs(sin(time0*0.1)*4)) + 4, abs(sin(time0*0.7-.1))*100 + 600 ,true,true);
 
 	// Desenha poligono
 	ofSetColor(corMatiz);
@@ -666,7 +897,7 @@ void ofApp::draw() {
 	ofFill();
 	ofSetColor(corMatizComplementar, 150);
 
-	logoBrisa.draw(vw*0.2 + intControl -145 ,vh*0.6 + intControl2, logoBrisa.getWidth()*0.3, logoBrisa.getHeight()*0.3 );
+	logoBrisa.draw(vw*0.8 ,vh*0.8, logoBrisa.getWidth()*0.3, logoBrisa.getHeight()*0.3 );
 
 
 	ofSetColor(corMatizComplementar);
@@ -678,18 +909,16 @@ void ofApp::draw() {
 
 	ofSetColor(255,255,255);
 
-	//4. Abre pastas
-	for (int i=0; i<gifs.size(); i++) {	
+	//Desenha gif
+	int i = 0;
 
-		int ngif = gifs[i].size();
-		float duration = ngif / 24.0; //12fps		
-		float pos = fmodf( time0, duration ); // [0..duration]
-		//5. Convert pos in the frame number
-		int j = int( pos / duration * ngif );
+	if(true){
 
-		gifs[i][j].setAnchorPercent( 0.5, 0.5 );
-		gifs[i][j].draw( vw/2 + i*600, vh/2 ); ;
 		
+	}
+
+
+	if(true){
 	}
 
 }
@@ -794,12 +1023,12 @@ void desenhaDepthAlpha() {
 // Desenha depthcam+rgb pelo shader
 void desenhaAlphaVideoRGB( ofVideoPlayer &vid) {
 	// Desenha depthcam no fbo pra usar de textura
-	fboVideo.begin();
+	fbo1024.begin();
 	
 	ofSetColor( 255, 255, 255 );
-	grayImage.draw(0, 0, video.getWidth(), video.getHeight());
+	grayImage.draw(0, 0, vw, vh);
 
-	fboVideo.end();
+	fbo1024.end();
 	vid.update();
 	
 	kinect.draw(0, 0, vw, vh);
@@ -807,7 +1036,7 @@ void desenhaAlphaVideoRGB( ofVideoPlayer &vid) {
 	// desenha o video invertido
 	shaderInvert.begin();
 
-	shaderInvert.setUniformTexture( "texture1", fboVideo.getTextureReference(), 1 );
+	shaderInvert.setUniformTexture( "texture1", fbo1024.getTextureReference(), 1 );
 	vid.draw( 0, 0, 1024, 768);
 
 	shaderInvert.end();
@@ -846,9 +1075,9 @@ void desenhaCamFloresta() {
 }
 
 // Desenha Video invertido pela depthcam
-void desenhaCamSereias() {
+void desenhaViagemLua() {
 
-	videoMelie4.update();
+	videoViagemLua.update();
 	// Desenha depthcam no fbo pra usar de textura
 	fboVideo.begin();
 	
@@ -860,7 +1089,7 @@ void desenhaCamSereias() {
 	// desenha o video invertido
 	shaderInvert.begin();
 
-	videoMelie4.draw( 0, 0, 1024, 768);
+	videoViagemLua.draw( 0, 0, 1024, 768);
 
 	shaderInvert.end();
 
@@ -871,7 +1100,7 @@ void desenhaCamSereias() {
 
 	//desenha video pelo shader
 	ofSetColor( 255, 255, 255 );
-	videoMelie4.draw( 0, 0, 1024, 768);
+	videoViagemLua.draw( 0, 0, 1024, 768);
 	
 	shader.end();
 }
