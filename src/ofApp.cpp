@@ -31,7 +31,7 @@ ofColor corMatiz, corMatizComplementar;
 
 float inicioFbo[4];
 int numeroBrisaFbo[4];
-float tempoBrisa = 10, tempoFade = 2;
+float tempoBrisa = 35, tempoFade = 2;
 float ultimoEvento;
 
 int whiteTotalSlow = 0; // quantidade de coisa na frente da tela
@@ -190,7 +190,7 @@ void ofApp::setup() {
 			ofLoadImage( gifs01[i][j], fileName );
 		}
 	}
-
+/*
 	//2. Carrega numero de pastas de sequencias
 	ngifs = dirgifs.listDir("gifs/02fullscreen");
 	//3. Set array size 
@@ -215,7 +215,7 @@ void ofApp::setup() {
 			ofLoadImage( gifs02[i][j], fileName );
 		}
 	}
-	
+	*/
 	//2. Carrega numero de pastas de sequencias
 	ngifs = dirgifs.listDir("gifs/03original");
 	//3. Set array size 
@@ -498,7 +498,7 @@ void ofApp::update() {
 			numeroBrisaFbo[0] = 9; // video viagem lua
 			numeroBrisaFbo[1] = 7; // triangulos
 			numeroBrisaFbo[2] = 2; // olho illu
-		} else if(eventoRand < 0.35){
+		} else if(eventoRand < 0.3){
 
 			//video
 			inicioFbo[0] = time0;
@@ -523,6 +523,14 @@ void ofApp::update() {
 			inicioFbo[3] = time0;
 			numeroBrisaFbo[1] = 0; // null
 			numeroBrisaFbo[2] = 17; // sombras coloridas
+			numeroBrisaFbo[3] = 0; // null
+		} else if(eventoRand < 0.7){
+			//video
+			inicioFbo[1] = time0;
+			inicioFbo[2] = time0;
+			inicioFbo[3] = time0;
+			numeroBrisaFbo[1] = 0; // null
+			numeroBrisaFbo[2] = 14; // gif fundo
 			numeroBrisaFbo[3] = 0; // null
 		}
 		
@@ -740,7 +748,7 @@ void desenhaGifFundo() {
 
 void desenhaGifOriginal() {
 
-	float i = fmodf( time0, gifs03.size() ); // [0..duration]
+	float i = fmodf( time0/12, gifs03.size() ); // [0..duration]
 
 	int ngif = gifs03[i].size();
 	float duration = ngif / 12.0; //12fps		
@@ -755,7 +763,7 @@ void desenhaGifOriginal() {
 
 void desenhaGifMetade() {
 
-	float i = fmodf( time0, gifs04.size() ); // [0..duration]
+	float i = fmodf( time0/11, gifs04.size() ); // [0..duration]
 
 	int ngif = gifs04[i].size();
 	float duration = ngif / 12.0; //12fps		

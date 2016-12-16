@@ -1,6 +1,2 @@
-﻿  ofApp.cpp
-     Creating library bin\kinectExample.lib and object bin\kinectExample.exp
-  LINK : /LTCG specified but no code generation required; remove /LTCG from the link command line to improve linker performance
-  kinectExample.vcxproj -> C:\Users\danielle\Documents\of\apps\myApps\groov\bin\kinectExample.exe
-  
-  	                   9	C:\Users\danielle\Documents\of\export\vs\Win32\
+﻿  main.cpp
+  ofApp.cpp
